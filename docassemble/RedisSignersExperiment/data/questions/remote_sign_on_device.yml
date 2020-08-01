@@ -1,0 +1,192 @@
+comment: |
+  A flow for allowing non-user signers to sign on the device with which they are most comfortable.
+
+  `generic object` is being used to allow more flexibility for developers using this module.
+  
+  Limitations:
+  - Right now the signer can't pick any device they want. It only differentiates between using a computer and a mobile device. A mobile device will always only present a signature. The execution order for handling multiple devices is complex unless it's broken into multiple interviews.
+  - It can send a text, but not an email.
+  
+  TODO:
+  - Need to check with redis whether has signed already or not.
+---
+objects:
+  - redis: DARedis
+#---
+#modules:
+#  - .signing_party
+---
+code: |
+  # Use and save data in redis if possible
+  class SigningParty:
+    # Only uses redis if url arguments exist to allow this module to be used independently of url arguments. Somewhere else will take care of authentication?
+    def __init__(self, url_args):
+      self.exists = False
+
+      if 'action_id' in url_args:
+        self.exists = True
+
+        # These intermediate vars are actually useful
+        self.action_id = url_args[ 'action_id' ]
+        self.id = url_args['party_id']
+        self.action_data = redis.get_data( self.action_id )
+        parties = self.action_data['parties']
+        self.user = parties[ url_args['user_id'] ]  # For sms message
+        party = parties[ self.id ]
+        self.preview = self.action_data['preview']
+        # Start as undefined when user first arrives?
+        self.signature = valueOrNone( party, 'signature' )
+        self.signature_date = valueOrNone( party, 'signature_date' )
+        self.willing_to_sign = valueOrNone( party, 'willing_to_sign' )
+
+    def amend(self, key, value):
+      if self.exists:
+        self.action_data['parties'][ self.id ][ key ] = value
+        redis.set_data( self.action_id, self.action_data )
+
+  def valueOrNone( dictionary, key ):
+    try: return dictionary[ key ]
+    except: return None
+---
+event: x.sign_on_device
+generic object: Individual
+code: |
+  # x and the redis object are deliberately seperate
+  log( valueOrNone({}, 'foo'), 'console' )  # Test
+
+  party = SigningParty( url_args )
+  log( party.exists, 'console' )
+  if party.exists:
+    log( party.signature, 'console' )  # Test
+    if party.signature:
+      x.after_signature
+
+  else:
+    x.willing_to_sign
+    party.amend( key='willing_to_sign', value=x.willing_to_sign )
+    if not x.willing_to_sign:
+      x.end_with_unwilling_to_sign
+
+    else:
+      # which_device: atm really means 'wants to use any computer'
+      # If not on computer or wants to sign on computer
+      if (device() and not device().is_pc) or x.which_device == 'this device':
+        party.amend( key='signature', value=x.signature )
+        x.signature_date = today()
+        party.amend( key='signature_date', value=x.signature_date )
+        x.after_signature
+      else:
+        x.mobile_number
+        x.send_sms_signature_link
+        #if x.send_method == 'text':
+        #  x.send_sms_signature_link
+        #elif x.send_method == 'email':  # Not implemented for MVP
+        #  x.send_email_signature_link
+        x.wait_for_signature
+---
+event: x.wait_for_signature
+generic object: Individual
+code: |
+  if x.wants_to_change_device is True:
+    # Reset and start over again
+    undefine( x.instanceName + '.which_device' )
+    undefine( x.instanceName + '.send_method' )
+    undefine( x.instanceName + '.wants_to_change_device' )
+    x.sign_on_device
+  else:
+    if defined( x.instanceName + '.signature' ):
+      x.after_signature
+    else:
+      # Allow changing of waiting page text
+      x.said_had_signed_on_other_device = True
+      undefine( x.instanceName + '.wants_to_change_device' )
+      x.wait_for_signature
+---
+# Starting value
+generic object: Individual
+code: |
+  x.said_had_signed_on_other_device = False
+---
+id: x.willing_to_sign
+generic object: Individual
+question: |
+  x.willing_to_sign
+yesno: x.willing_to_sign
+---
+id: x.end_with_unwilling_to_sign
+event: x.end_with_unwilling_to_sign
+generic object: Individual
+question: |
+  Thank you
+subquestion: |
+  You can close this window now.
+---
+id: x.which_device
+generic object: Individual
+question: |
+  Where do you want to sign this?
+subquestion: |
+  Do you want to sign on this computer or on a phone or tablet instead?
+field: x.which_device
+buttons:
+  - This computer: this device
+    image: desktop
+  - A phone or tablet: other device
+    image: mobile-alt
+script: |
+  <script>
+    $(".da-field-buttons > div > .btn-da-custom").last().after("<br>")
+    $(".da-field-buttons > div > .btn-da-custom").first().before("<br>")
+  </script>
+---
+id: x.signature
+generic object: Individual
+question: |
+  x.signature
+yesno: x.signature
+---
+id: x.after_signature
+event: x.after_signature
+generic object: Individual
+code: |
+  x.status
+---
+id: x.status
+event: x.status
+generic object: Individual
+question: |
+  x.status
+---
+id: send_method
+# for now, just get the mobile number
+generic object: Individual
+question: |
+  Send this to your mobile device
+subquestion: |
+  You can use a QR code that will be here or you can text your mobile device.
+fields:
+  - Number to text: x.mobile_number
+---
+id: x.send_sms_signature_link
+event: x.send_sms_signature_link
+generic object: Individual
+code: |
+  log( 'send_sms_signature_link', 'console' )
+  log( url_args[ 'action_id' ], 'console')
+---
+id: x.send_email_signature_link
+event: x.send_email_signature_link
+generic object: Individual
+code: |
+  # Will need url arguments
+  log( 'send_email_signature_link', 'console' )
+  log( url_args[ 'action_id' ], 'console')
+---
+id: x.wants_to_change_device
+generic object: Individual
+question: |
+  x.wants_to_change_device or done with signing
+field: x.wants_to_change_device
+buttons:
+  - Change my device: True
+  - Check for signature: False

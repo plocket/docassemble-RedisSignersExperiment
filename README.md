@@ -1,0 +1,1 @@
+Trying out Redis as a way to get remote signatures more easily. It's an alternative to using action arguments, `force_ask`, and such.

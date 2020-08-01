@@ -1,0 +1,96 @@
+---
+modules:
+  - docassemble.VirtualCourtToolbox.shortenURL
+---
+include:
+  - remote_sign_on_device.yml
+  #- docassemble.MAVirtualCourt:basic-questions.yml
+---
+objects:
+  - all_signers: DAList.using(object_type=Individual, auto_gather=False)
+  #PeopleList.using(auto_gather=False)
+  - others: DAList.using(object_type=Individual, auto_gather=False)
+  #PeopleList.using(auto_gather=False)
+  - redis: DARedis
+  - action_data: DADict
+  - signers_by_id: DADict
+---
+mandatory: True
+code: |
+  #users[0].name.first
+  #users.gathered = True
+  #users.there_is_another = False
+
+  others[0].name.first
+  others.gathered = True
+  others.there_is_another = False
+
+  all_signers = others #users + others
+  for signer in all_signers:
+    signers_by_id[ signer.id ] = signer
+  all_signers.gathered = True
+  all_signers.there_is_another = False
+  
+  action_id = get_random_id()
+  #action_data[ 'parties' ] = signers_by_id
+  #action_data[ 'user_id' ] = others[0].id
+  #action_data[ 'preview' ] = signature_doc
+  #redis.set_data( others[0].action_id, action_data, expire=3 )
+  #log( 'action_id:' + action_id, 'console' )
+
+  # Since it's one big namespace, I think each of these need their own namespace.
+  # Interview/ document/ contract/ occasion/ event/ session/ consult/ case/ action /process/ ?? id
+  #   ?user id?
+  #   preview
+  #   signed document
+  #   party_id
+  #   signer/user/party_ids/parties
+  #     signature
+  #     willing_to_sign
+  #     signature_date
+  # This sort of looks like there's only one user per interview, so maybe we don't need a list of users.
+
+  others[0].sign_on_device
+---
+id: sms template multiuser
+generic object: Individual
+template: x.sms_template
+content: |
+  Dear ${ x },
+  You decided to sign the document on this device. Go to ${ x.sign_url } to sign your document
+---
+generic object: Individual
+question: |
+  Name
+fields:
+  - First: x.name.first
+---
+generic object: Individual
+code: |
+  x.sign_url = shortenMe( interview_url_action('sign_on_device', action_id=action_id )).shortenedURL
+---
+generic object: Individual
+code: |
+  x.id = get_random_id()
+---
+code: |
+  import random
+  import string
+  def get_random_id(num_chars=10):
+    return ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+---
+id: document
+event: x.status
+generic object: Individual
+prevent going back: True
+question: |
+  Test document signatures for
+subquestion: |
+  ${ signature_doc }
+---
+attachment:
+  name: Signatures doc
+  variable name: signature_doc
+  filename: signatures
+  docx template file: test-signatures.docx
+---
