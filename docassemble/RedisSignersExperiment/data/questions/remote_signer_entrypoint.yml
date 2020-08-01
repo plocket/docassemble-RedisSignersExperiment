@@ -1,0 +1,32 @@
+modules:
+  - docassemble.VirtualCourtToolbox.shortenURL
+---
+include:
+  - remote_sign_on_device.yml
+  - docassemble.MAVirtualCourt:basic-questions.yml
+---
+objects:
+  - redis: DARedis
+---
+mandatory: True
+code: |
+  if 'action_key' in url_args:
+    log( url_args['action_key'], 'console' )
+    log( redis.get_data( url_args['action_key'] ), 'console' )
+    #redis_data = redis.get_data( url_args['action_key'] )
+    #party = redis_data['parties'][ url_args['party_id'] ]
+    #users[0] = redis_data['parties'][ url_args['user_id'] ]
+    #party.status
+---
+id: signature status
+event: x.status
+prevent going back: True
+question: |
+  Signature status
+subquestion: |
+  ${ party[ 'preview' ]}
+---
+generic object: Individual
+code: |
+  x.signature_url = 'https://apps-dev.suffolklitlab.org/interview?' + 'action_key=' + action_key + '&' + 'user_id=' +  users[0].id + '&' + 'party_id=' + x.id + '&' + 'i=docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
+---
