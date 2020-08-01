@@ -1,9 +1,12 @@
 from docassemble.base.util import DARedis, DAObject
 
 # Use and save data in redis if possible
-class SigningParty(DAObject):
+#class SigningParty(DAObject):
+class SigningParty():
   # Only uses redis if url arguments exist to allow this module to be used independently of url arguments. Somewhere else will take care of authentication?
+  #def init(self, url_args):
   def __init__(self, url_args):
+    #super().init(*pargs, **kwargs)
     self.exists = False
 
     if 'action_id' in url_args:

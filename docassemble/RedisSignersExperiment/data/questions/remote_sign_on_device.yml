@@ -12,48 +12,44 @@ comment: |
 ---
 objects:
   - redis: DARedis
-#---
-#modules:
-#  - .signing_party
 ---
-code: |
-  # Use and save data in redis if possible
-  class SigningParty:
-    # Only uses redis if url arguments exist to allow this module to be used independently of url arguments. Somewhere else will take care of authentication?
-    def __init__(self, url_args):
-      self.exists = False
+modules:
+  - .signing_party
+---
+comment: |
+  code: |
+    # Use and save data in redis if possible
+    class SigningParty:
+      # Only uses redis if url arguments exist to allow this module to be used independently of url arguments. Somewhere else will take care of authentication?
+      def __init__(self, url_args):
+        self.exists = False
 
-      if 'action_id' in url_args:
-        self.exists = True
+        if 'action_id' in url_args:
+          self.exists = True
 
-        # These intermediate vars are actually useful
-        self.action_id = url_args[ 'action_id' ]
-        self.id = url_args['party_id']
-        self.action_data = redis.get_data( self.action_id )
-        parties = self.action_data['parties']
-        self.user = parties[ url_args['user_id'] ]  # For sms message
-        party = parties[ self.id ]
-        self.preview = self.action_data['preview']
-        # Start as undefined when user first arrives?
-        self.signature = valueOrNone( party, 'signature' )
-        self.signature_date = valueOrNone( party, 'signature_date' )
-        self.willing_to_sign = valueOrNone( party, 'willing_to_sign' )
+          # These intermediate vars are actually useful
+          self.action_id = url_args[ 'action_id' ]
+          self.id = url_args['party_id']
+          self.action_data = redis.get_data( self.action_id )
+          parties = self.action_data['parties']
+          self.user = parties[ url_args['user_id'] ]  # For sms message
+          party = parties[ self.id ]
+          self.preview = self.action_data['preview']
+          # Start as undefined when user first arrives?
+          self.signature = valueOrNone( party, 'signature' )
+          # Signing code hasn't needed to access these so far
+          #self.signature_date = valueOrNone( party, 'signature_date' )
+          #self.willing_to_sign = valueOrNone( party, 'willing_to_sign' )
 
-    def amend(self, key, value):
-      if self.exists:
-        self.action_data['parties'][ self.id ][ key ] = value
-        redis.set_data( self.action_id, self.action_data )
-
-  def valueOrNone( dictionary, key ):
-    try: return dictionary[ key ]
-    except: return None
+      def amend(self, key, value):
+        if self.exists:
+          self.action_data['parties'][ self.id ][ key ] = value
+          redis.set_data( self.action_id, self.action_data )
 ---
 event: x.sign_on_device
 generic object: Individual
 code: |
   # x and the redis object are deliberately seperate
-  log( valueOrNone({}, 'foo'), 'console' )  # Test
-
   party = SigningParty( url_args )
   log( party.exists, 'console' )
   if party.exists:
@@ -143,7 +139,7 @@ id: x.signature
 generic object: Individual
 question: |
   x.signature
-yesno: x.signature
+signature: x.signature
 ---
 id: x.after_signature
 event: x.after_signature
@@ -172,7 +168,7 @@ event: x.send_sms_signature_link
 generic object: Individual
 code: |
   log( 'send_sms_signature_link', 'console' )
-  log( url_args[ 'action_id' ], 'console')
+  log( url_args, 'console')
 ---
 id: x.send_email_signature_link
 event: x.send_email_signature_link
@@ -180,7 +176,7 @@ generic object: Individual
 code: |
   # Will need url arguments
   log( 'send_email_signature_link', 'console' )
-  log( url_args[ 'action_id' ], 'console')
+  log( url_args, 'console')
 ---
 id: x.wants_to_change_device
 generic object: Individual
