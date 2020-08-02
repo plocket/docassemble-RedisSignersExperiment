@@ -11,6 +11,7 @@ objects:
   - user: Individual
   - signer: Individual
 ---
+# Currently getting here with the url in the console of the initial interview
 mandatory: True
 code: |
   if 'action_key' in url_args:
@@ -25,8 +26,8 @@ code: |
     preview = redis_data[ 'preview' ]
 
     signer.signature
-    #signer_data[ 'signature' ] = signer.signature
-    #log( redis_data['parties'][ url_args['party_id'] ][ 'signature' ])
+    signer_data.signature = signer.signature
+    log( redis_data['parties'][ url_args['party_id'] ].signature, 'console' )
     
     signer.status
 ---
