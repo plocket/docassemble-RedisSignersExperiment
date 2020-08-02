@@ -3,7 +3,7 @@ modules:
 ---
 include:
   - remote_sign_on_device.yml
-  - docassemble.MAVirtualCourt:basic-questions.yml
+  #- docassemble.MAVirtualCourt:basic-questions.yml
 ---
 # Use redis data to create values for local objects so that intrinsic names (`.instanceName`) can be used for `generic object:` in this interview.
 objects:
@@ -71,6 +71,12 @@ subquestion: |
 ---
 code: |
   preview = redis.get_data( url_args['action_key'] )[ 'preview' ]
+---
+id: signature
+generic object: Individual
+question: |
+  Signature ${ x }
+signature: x.signature
 ---
 generic object: Individual
 code: |
