@@ -38,12 +38,18 @@ code: |
     log( signer_data.id, 'console' )
 
     signer.signature
-    signer_data.signature = signer.signature
+    #signer_data.signature = signer.signature
+    log( 'signer.signature:', 'console' )
+    log( signer.signature, 'console' )
 
     
-    signatures = redis_data[ 'signatures' ]
+    #signatures = redis_data[ 'signatures' ]
     #signatures[ signer.id ] = signer.signature
     redis_data[ 'signatures' ][ signer.id ] = signer.signature
+    log( 'signer id:', 'console' )
+    log( signer.id, 'console' )
+    log( 'redis_data signature:', 'console' )
+    log( redis_data[ 'signatures' ][ signer.id ], 'console' )
     
     #redis.set_data( test_key, signer.signature , expire=(12 * 60 * 60 * 1000) )
     #log( test_key, 'console' )
@@ -51,6 +57,8 @@ code: |
     #log( redis_data['parties'][ url_args['party_id'] ].signature, 'console' )
     
     redis.set_data( url_args['action_key'], redis_data )
+    log( 'redis.get_data signature:', 'console' )
+    log( redis.get_data( url_args['action_key'] )['signatures'][ signer.id ], 'console' )
     
     log( url_args['action_key'], 'console' )
     
