@@ -8,16 +8,19 @@ class SigningParty():
   def __init__(self, url_args):
     #super().init(*pargs, **kwargs)
     self.exists = False
+    
+    # In url_args there should be:
+    # action_key, user_id, party_id
 
-    if 'action_id' in url_args:
+    if 'action_key' in url_args:
       self.exists = True
       self.redis = DARedis()
       redis = self.redis
 
       # These intermediate vars are actually useful
-      self.action_id = url_args[ 'action_id' ]
+      self.action_key = url_args[ 'action_key' ]
       self.id = url_args['party_id']
-      self.action_data = redis.get_data( self.action_id )
+      self.action_data = redis.get_data( self.action_key )
       parties = self.action_data['parties']
       self.user = parties[ url_args['user_id'] ]  # For sms message
       party = parties[ self.id ]
@@ -30,7 +33,7 @@ class SigningParty():
   def amend(self, key, value):
     if self.exists:
       self.action_data['parties'][ self.id ][ key ] = value
-      self.redis.set_data( self.action_id, self.action_data )
+      self.redis.set_data( self.action_key, self.action_data )
 
 def valueOrNone( dictionary, key ):
   try: return dictionary[ key ]

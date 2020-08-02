@@ -6,45 +6,12 @@ comment: |
   Limitations:
   - Right now the signer can't pick any device they want. It only differentiates between using a computer and a mobile device. A mobile device will always only present a signature. The execution order for handling multiple devices is complex unless it's broken into multiple interviews.
   - It can send a text, but not an email.
-  
-  TODO:
-  - Need to check with redis whether has signed already or not.
 ---
 objects:
   - redis: DARedis
 ---
 modules:
   - .signing_party
----
-comment: |
-  code: |
-    # Use and save data in redis if possible
-    class SigningParty:
-      # Only uses redis if url arguments exist to allow this module to be used independently of url arguments. Somewhere else will take care of authentication?
-      def __init__(self, url_args):
-        self.exists = False
-
-        if 'action_id' in url_args:
-          self.exists = True
-
-          # These intermediate vars are actually useful
-          self.action_id = url_args[ 'action_id' ]
-          self.id = url_args['party_id']
-          self.action_data = redis.get_data( self.action_id )
-          parties = self.action_data['parties']
-          self.user = parties[ url_args['user_id'] ]  # For sms message
-          party = parties[ self.id ]
-          self.preview = self.action_data['preview']
-          # Start as undefined when user first arrives?
-          self.signature = valueOrNone( party, 'signature' )
-          # Signing code hasn't needed to access these so far
-          #self.signature_date = valueOrNone( party, 'signature_date' )
-          #self.willing_to_sign = valueOrNone( party, 'willing_to_sign' )
-
-      def amend(self, key, value):
-        if self.exists:
-          self.action_data['parties'][ self.id ][ key ] = value
-          redis.set_data( self.action_id, self.action_data )
 ---
 event: x.sign_on_device
 generic object: Individual
