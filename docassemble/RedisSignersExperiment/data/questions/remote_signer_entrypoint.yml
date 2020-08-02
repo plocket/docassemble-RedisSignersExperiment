@@ -15,7 +15,7 @@ objects:
 mandatory: True
 code: |
   if 'action_key' in url_args:
-    #log( url_args['action_key'], 'console' )
+    log( url_args['action_key'], 'console' )
     #log( redis.get_data( url_args['action_key'] ), 'console' )
     redis_data = redis.get_data( url_args['action_key'] )
     signer_data = redis_data['parties'][ url_args['party_id'] ]
@@ -23,7 +23,8 @@ code: |
     signer.name = signer_data.name
     users_data = redis_data['parties'][ url_args['user_id'] ]
     user = users_data.name
-    preview = redis_data[ 'preview' ]
+    #preview = redis_data[ 'preview' ]
+    #get_preview
 
     signer.signature
     signer_data.signature = signer.signature
@@ -33,6 +34,8 @@ code: |
 ---
 id: signature status
 event: x.status
+reconsider:
+  - preview
 generic object: Individual
 prevent going back: True
 question: |
@@ -40,9 +43,13 @@ question: |
 subquestion: |
   ${ user }'s document.
   
-  ${ preview }
+  ${ redis_data[ 'preview' ] }
 ---
 generic object: Individual
 code: |
-  x.signature_url = 'https://apps-dev.suffolklitlab.org/interview?' + 'action_key=' + action_key + '&' + 'user_id=' +  users[0].id + '&' + 'party_id=' + x.id + '&' + 'i=docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
+  x.signature_url_string = 'https://apps-dev.suffolklitlab.org/interview?' + 'action_key=' + action_key + '&' + 'user_id=' +  users[0].id + '&' + 'party_id=' + x.id + '&' + 'i=docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
+---
+#event: get_preview
+code: |
+  preview = redis.get_data( url_args['action_key'] )[ 'preview' ]
 ---
