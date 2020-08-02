@@ -7,24 +7,27 @@ include:
 ---
 objects:
   - redis: DARedis
+  - person: Individual
 ---
 mandatory: True
 code: |
   if 'action_key' in url_args:
     log( url_args['action_key'], 'console' )
     log( redis.get_data( url_args['action_key'] ), 'console' )
-    #redis_data = redis.get_data( url_args['action_key'] )
-    #party = redis_data['parties'][ url_args['party_id'] ]
-    #users[0] = redis_data['parties'][ url_args['user_id'] ]
-    #party.status
+    redis_data = redis.get_data( url_args['action_key'] )
+    party = redis_data['parties'][ url_args['party_id'] ]
+    users[0] = redis_data['parties'][ url_args['user_id'] ]
+    #value( party.instanceName + '.status' )
+    person.status
 ---
 id: signature status
 event: x.status
+generic object: Individual
 prevent going back: True
 question: |
   Signature status
-subquestion: |
-  ${ party[ 'preview' ]}
+#subquestion: |
+#  ${ party[ 'preview' ]}
 ---
 generic object: Individual
 code: |
