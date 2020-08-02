@@ -5,29 +5,41 @@ include:
   - remote_sign_on_device.yml
   - docassemble.MAVirtualCourt:basic-questions.yml
 ---
+# Use redis data to create values for local objects so that intrinsic names (`.instanceName`) can be used for `generic object:` in this interview.
 objects:
   - redis: DARedis
-  - person: Individual
+  - user: Individual
+  - signer: Individual
 ---
 mandatory: True
 code: |
   if 'action_key' in url_args:
-    log( url_args['action_key'], 'console' )
-    log( redis.get_data( url_args['action_key'] ), 'console' )
+    #log( url_args['action_key'], 'console' )
+    #log( redis.get_data( url_args['action_key'] ), 'console' )
     redis_data = redis.get_data( url_args['action_key'] )
-    party = redis_data['parties'][ url_args['party_id'] ]
-    users[0] = redis_data['parties'][ url_args['user_id'] ]
-    #value( party.instanceName + '.status' )
-    person.status
+    signer_data = redis_data['parties'][ url_args['party_id'] ]
+    #log( party.name.first, 'console' )
+    signer.name = signer_data.name
+    users_data = redis_data['parties'][ url_args['user_id'] ]
+    user = users_data.name
+    preview = redis_data[ 'preview' ]
+
+    signer.signature
+    #signer_data[ 'signature' ] = signer.signature
+    #log( redis_data['parties'][ url_args['party_id'] ][ 'signature' ])
+    
+    signer.status
 ---
 id: signature status
 event: x.status
 generic object: Individual
 prevent going back: True
 question: |
-  Signature status
-#subquestion: |
-#  ${ party[ 'preview' ]}
+  Signature status for ${ x }
+subquestion: |
+  ${ user }'s document.
+  
+  ${ preview }
 ---
 generic object: Individual
 code: |
