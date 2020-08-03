@@ -62,21 +62,25 @@ code: |
   #log( others[0].email_template, 'console' )
   log( others[0].signature_url, 'console' )
   
-  users[0].signature
-  set_redis_user_signature
-  others[0].was_notified
-  
-  #for signer in others:
-  #  signer.was_notified
-  #  if signer.send_method = 'email':
-  #    signer.send_signature_email
-  #  elif signer.send_method = 'text':
-  #    signer.send_signature_sms
-  
-  #for signer in all_signers:
-  #  log( defined( signer.instanceName + '.signature' ), 'console' )
-
-  users[0].status
+  users[0].sign_on_device
+  #users[0].signature
+  #set_redis_user_signature
+  #others[0].was_notified
+  #
+  ##for signer in others:
+  ##  signer.was_notified
+  ##  if signer.send_method = 'email':
+  ##    signer.send_signature_email
+  ##  elif signer.send_method = 'text':
+  ##    signer.send_signature_sms
+  #
+  ##for signer in all_signers:
+  ##  log( defined( signer.instanceName + '.signature' ), 'console' )
+  #
+  #users[0].status
+---
+code: |
+  action_key = get_random_chars()
 ---
 code: |
   action_data[ 'user_id' ] = users[0].id
@@ -100,8 +104,12 @@ code: |
   redis.set_data( action_key, action_data )
   set_redis_user_signature = True
 ---
+event: x.after_signature
+generic object: Individual
 code: |
-  action_key = get_random_chars()
+  set_redis_user_signature
+  others[0].was_notified
+  users[0].status
 ---
 code: |
   others[0].signature = ''
