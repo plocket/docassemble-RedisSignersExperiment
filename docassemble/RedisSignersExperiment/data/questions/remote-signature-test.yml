@@ -101,7 +101,6 @@ code: |
   set_redis_user_signature = True
 ---
 code: |
-  test_key = get_random_chars()
   action_key = get_random_chars()
 ---
 code: |

@@ -24,7 +24,9 @@ class SigningParty():
       parties = self.action_data['parties']
       self.user = parties[ url_args['user_id'] ]  # For sms message
       party = parties[ self.id ]
-      self.preview = self.action_data['preview']
+      #self.preview = self.action_data['preview']
+      #self.preview = self.action_data['sign_doc']
+
       # Start as undefined when user first arrives?
       self.signature = valueOrNone( party, 'signature' )
       self.signature_date = valueOrNone( party, 'signature_date' )
@@ -32,7 +34,7 @@ class SigningParty():
 
   def amend(self, key, value):
     if self.exists:
-      self.action_data['parties'][ self.id ][ key ] = value
+      setattr( self.action_data['parties'][ self.id ], key, value ) #.setAttribute( key, value )
       self.redis.set_data( self.action_key, self.action_data )
 
 def valueOrNone( dictionary, key ):

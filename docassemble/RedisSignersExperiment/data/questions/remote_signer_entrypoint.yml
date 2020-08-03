@@ -15,8 +15,6 @@ objects:
 mandatory: True
 code: |
   if 'action_key' in url_args:
-    test_key = url_args[ 'test_key' ]
-    
     #log( 'action_key: ' + url_args['action_key'], 'console' )
     redis_data = redis.get_data( url_args['action_key'] )
     
@@ -27,14 +25,25 @@ code: |
     user_data = redis_data['parties'][ url_args['user_id'] ]
     user = user_data.name
     #log( 'signer id: ' + signer_data.id, 'console' )
+    log( '1', 'console' )
+    signer.sign_on_device
+    log( 'A', 'console' )
 
-    signer.signature.set_attributes(persistent=True, private=False)
-
-    redis_data['parties'][ url_args['party_id'] ].signature = signer.signature
+    #signer.signature.set_attributes(persistent=True, private=False)
+    #redis_data['parties'][ url_args['party_id'] ].signature = signer.signature
+    #redis.set_data( url_args['action_key'], redis_data )
     
-    redis.set_data( url_args['action_key'], redis_data )
+    #signer.status
+---
+id: x.after_signature
+event: x.after_signature
+generic object: Individual
+code: |
+  x.signature.set_attributes(persistent=True, private=False)
+  redis_data['parties'][ url_args['party_id'] ].signature = x.signature
+  redis.set_data( url_args['action_key'], redis_data )
     
-    signer.status
+  x.status
 ---
 # Doc is `None` when we try to use signatures
 id: signature status
@@ -60,7 +69,6 @@ code: |
     action_key = action_key,
     user_id = users[0].id,
     party_id = x.id,
-    test_key = test_key,
     new_session = '1', i='docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
   )
 ---
