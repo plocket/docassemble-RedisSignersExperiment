@@ -18,27 +18,33 @@ generic object: Individual
 code: |
   # x and the redis object are deliberately seperate
   party = SigningParty( url_args )
+  log( '2', 'console' )
   log( party.exists, 'console' )
-  if party.exists:
-    log( party.signature, 'console' )  # Test
-    if party.signature:
-      x.after_signature
+  if party.exists and party.signature != '' and party.signature != None:
+    log( '3', 'console' )
+    #log( party.signature, 'console' )  # Test
+    log( '4', 'console' )
+    x.after_signature
 
   else:
+    log( '5', 'console' )
     x.willing_to_sign
     party.amend( key='willing_to_sign', value=x.willing_to_sign )
     if not x.willing_to_sign:
       x.end_with_unwilling_to_sign
-
+      log( '6', 'console' )
     else:
+      log( '7', 'console' )
       # which_device: atm really means 'wants to use any computer'
       # If not on computer or wants to sign on computer
       if (device() and not device().is_pc) or x.which_device == 'this device':
+        log( '8', 'console' )
         party.amend( key='signature', value=x.signature )
         x.signature_date = today()
         party.amend( key='signature_date', value=x.signature_date )
         x.after_signature
       else:
+        log( '9', 'console' )
         x.mobile_number
         x.send_sms_signature_link
         #if x.send_method == 'text':
@@ -46,6 +52,7 @@ code: |
         #elif x.send_method == 'email':  # Not implemented for MVP
         #  x.send_email_signature_link
         x.wait_for_signature
+  log( '10', 'console' )
 ---
 event: x.wait_for_signature
 generic object: Individual
