@@ -62,6 +62,7 @@ code: |
   #log( others[0].email_template, 'console' )
   log( others[0].signature_url, 'console' )
   
+  users[0].willing_to_sign = True
   users[0].sign_on_device
   #users[0].signature
   #set_redis_user_signature
