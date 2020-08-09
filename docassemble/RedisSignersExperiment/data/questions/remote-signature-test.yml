@@ -27,16 +27,19 @@ code: |
   # redist.set_data( 'action_key', { parties: {}, preview: doc, }, expire=3)
   # url_args needed: action_key, party_id, user_id
 
-  action_key # legal_action? with same people. one form...
-
   users[0].name.first
+  users[0].has_signed = False
   users.gathered = True
   users.there_is_another = False
 
   others[0].name.first
+  others[0].has_signed = False
+  others[1].name.first
+  others[1].has_signed = False
   others.gathered = True
   others.there_is_another = False
-  set_initial_signatures
+  
+  #set_initial_signatures
 
   all_signers = users + others
   all_signers.gathered = True
@@ -54,13 +57,18 @@ code: |
   # https://docassemble.org/docs/objects.html#DAFile.set_attributes
   # Do we want persistance so that signers can see their document even after the user has exited the interview?
   signature_doc.set_attributes(persistent=True, private=False)
-  
+
+  ## If authorization is implemented in interview, this must come after users[0] is defined. Very fragile.
+  action_key # var name? legal_action? with same people. one form...
+
   set_initial_redis_data
   
-  others[0].send_method
+  #others[0].send_method
+  #others[1].send_method
   #log( others[0].email, 'console' )
   #log( others[0].email_template, 'console' )
   log( others[0].signature_url, 'console' )
+  log( others[1].signature_url, 'console' )
   
   users[0].willing_to_sign = True
   users[0].sign_on_device
@@ -102,6 +110,8 @@ code: |
   # So others can see it on their own
   users[0].signature.set_attributes(persistent=True, private=False)
   action_data[ 'parties' ][ users[0].id ].signature = users[0].signature
+  action_data[ 'parties' ][ users[0].id ].signature_date = today()
+  action_data[ 'parties' ][ users[0].id ].has_signed = True
   redis.set_data( action_key, action_data )
   set_redis_user_signature = True
 ---
@@ -114,6 +124,7 @@ code: |
 ---
 code: |
   others[0].signature = ''
+  others[1].signature = ''
   set_initial_signatures = True
 ---
 generic object: Individual
@@ -191,7 +202,11 @@ code: |
   signing_parties = new_data[ 'parties' ]
   for signer in all_signers:
     if signer.id in signing_parties:
-      signer.signature = signing_parties[ signer.id ].signature
+      log( 'has signed: ', 'console' )
+      log( signer.id, 'console' )
+      log( signing_parties[ signer.id ].has_signed, 'console' )
+      if signing_parties[ signer.id ].has_signed:
+        signer.signature = signing_parties[ signer.id ].signature
   
   #reconsider( 'signature_doc' )
   #new_data[ 'signed_doc' ] = signature_doc.set_attributes(persistent=True, private=False)

@@ -5,43 +5,60 @@ include:
   - remote_sign_on_device.yml
   #- docassemble.MAVirtualCourt:basic-questions.yml
 ---
+modules:
+  - .signing_party
+---
 # Use redis data to create values for local objects so that intrinsic names (`.instanceName`) can be used for `generic object:` in this interview. Not sure this will work.
 objects:
   - redis: DARedis
-  - user: Individual
-  - signer: Individual
+  #- user: Individual
+  #- signer: Individual
 ---
 # Currently getting here with the url in the console of the initial interview
 mandatory: True
 code: |
+
   if 'action_key' in url_args:
-    #log( 'action_key: ' + url_args['action_key'], 'console' )
     redis_data = redis.get_data( url_args['action_key'] )
+    signer = get_signer( url_args )
+    log( type(signer), 'console' )
     
-    signer_data = redis_data['parties'][ url_args['party_id'] ]
-    #log( signer_data.name, 'console' )
-    signer.name = signer_data.name
-    signer.id = signer_data.id
-    user_data = redis_data['parties'][ url_args['user_id'] ]
-    user = user_data.name
-    #log( 'signer id: ' + signer_data.id, 'console' )
-    log( '1', 'console' )
-    signer.sign_on_device
-    log( 'A', 'console' )
+    ##signer_data = redis_data['parties'][ url_args['party_id'] ]
+    ##log( signer_data.name, 'console' )
+    #signer.name = signer_data.name
+    #signer.id = signer_data.id
+    #user_data = redis_data['parties'][ url_args['user_id'] ]
+    #user = user_data.name
+    user = redis_data['parties'][ url_args['user_id'] ]
+
+    amend_signer( url_args, 'willing_to_sign', signer.willing_to_sign )
+    if signer.willing_to_sign:
+      #log( 'signer id: ' + signer_data.id, 'console' )
+      signer.sign_on_device
+    else:
+      signer.end_with_unwilling_to_sign
 
     #signer.signature.set_attributes(persistent=True, private=False)
     #redis_data['parties'][ url_args['party_id'] ].signature = signer.signature
     #redis.set_data( url_args['action_key'], redis_data )
     
     #signer.status
+    
+  # TODO: If we don't do this, unauthorized users don't get a message? If we do this, though, other scripts can't get the url from here.
+  #elif not defined('users[0]'):
+  #  unauthorized
 ---
 id: x.after_signature
 event: x.after_signature
 generic object: Individual
 code: |
-  x.signature.set_attributes(persistent=True, private=False)
-  redis_data['parties'][ url_args['party_id'] ].signature = x.signature
-  redis.set_data( url_args['action_key'], redis_data )
+  #x.signature.set_attributes(persistent=True, private=False)
+  amend_signer( url_args, 'signature', x.signature )
+  amend_signer( url_args, 'signature_date', today()  )
+  amend_signer( url_args, 'has_signed', True )
+
+  #redis_data['parties'][ url_args['party_id'] ].signature = x.signature
+  #redis.set_data( url_args['action_key'], redis_data )
     
   x.status
 ---
@@ -71,4 +88,31 @@ code: |
     party_id = x.id,
     new_session = '1', i='docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
   )
+---
+id: x.end_with_unwilling_to_sign
+event: x.end_with_unwilling_to_sign
+generic object: Individual
+code: |
+  amend_signer( url_args, 'willing_to_sign', False )
+  x.unwilling_screen
+---
+id: unwilling to sign end
+event: x.unwilling_screen
+question: |
+  Thank you and goodbye
+buttons:
+  - exit
+---
+id: unauthorized
+event: unauthorized
+question: |
+  Thank you and goodbye
+buttons:
+  - exit
+---
+id: x.willing_to_sign
+generic object: Individual
+question: |
+  x.willing_to_sign
+yesno: x.willing_to_sign
 ---

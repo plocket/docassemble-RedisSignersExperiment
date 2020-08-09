@@ -13,45 +13,60 @@ objects:
 modules:
   - .signing_party
 ---
+# This was going to be flexible enough to use in any interview
+# but I'm not sure now. Maybe an action argument would be good.
 event: x.sign_on_device
 generic object: Individual
 code: |
-  # x and the redis object are deliberately seperate
-  party = SigningParty( url_args )
-  log( '2', 'console' )
-  log( party.exists, 'console' )
-  if party.exists and party.signature != '' and party.signature != None:
-    log( '3', 'console' )
-    #log( party.signature, 'console' )  # Test
-    log( '4', 'console' )
-    x.after_signature
+  # current bugs
+  # - Remote user keeps getting asked signature even when they've signed
+  #   Theory: 
+  # - Remote users never see the doc update (not MVP) (multiuser da example may have some clues)
+  x.has_signed = False  # False to start
 
+  # x and the redis object are deliberately seperate
+  #party = SigningParty( url_args, x )
+  #log( '2', 'console' )
+  #log( party.exists, 'console' )
+  #if party.exists:
+  #  log( party.willing_to_sign, 'console' )
+  #if party.exists and party.signature != '' and party.signature != None:
+  #    log( '3', 'console' )
+  #    #log( party.signature, 'console' )  # Test
+  #    log( '4', 'console' )
+  #    x.after_signature
+  #
+  #else:
+  #log( '5', 'console' )
+  #log( x.willing_to_sign, 'console' )
+  #x.willing_to_sign
+  ##party.amend( key='willing_to_sign', value=x.willing_to_sign )
+  #if not x.willing_to_sign:
+  #  x.end_with_unwilling_to_sign
+  #  log( '6', 'console' )
+  #else:
+  log( '7', 'console' )
+  # which_device: atm really means 'wants to use any computer'
+  # If not on computer or wants to sign on computer
+  if (device() and not device().is_pc) or x.which_device == 'this device':
+    log( '8', 'console' )
+    x.signature.set_attributes(persistent=True, private=False)
+    #party.amend( key='signature', value=x.signature )
+    #log( '8.5', 'console' )
+    #x.has_signed = True
+    #party.amend( key='has_signed', value=True )
+    #x.signature_date = today()
+    #party.amend( key='signature_date', value=x.signature_date )
+    x.after_signature
   else:
-    log( '5', 'console' )
-    x.willing_to_sign
-    party.amend( key='willing_to_sign', value=x.willing_to_sign )
-    if not x.willing_to_sign:
-      x.end_with_unwilling_to_sign
-      log( '6', 'console' )
-    else:
-      log( '7', 'console' )
-      # which_device: atm really means 'wants to use any computer'
-      # If not on computer or wants to sign on computer
-      if (device() and not device().is_pc) or x.which_device == 'this device':
-        log( '8', 'console' )
-        party.amend( key='signature', value=x.signature )
-        x.signature_date = today()
-        party.amend( key='signature_date', value=x.signature_date )
-        x.after_signature
-      else:
-        log( '9', 'console' )
-        x.mobile_number
-        x.send_sms_signature_link
-        #if x.send_method == 'text':
-        #  x.send_sms_signature_link
-        #elif x.send_method == 'email':  # Not implemented for MVP
-        #  x.send_email_signature_link
-        x.wait_for_signature
+    log( '9', 'console' )
+    x.mobile_number
+    x.send_sms_signature_link
+    #if x.send_method == 'text':
+    #  x.send_sms_signature_link
+    #elif x.send_method == 'email':  # Not implemented for MVP
+    #  x.send_email_signature_link
+    x.wait_for_signature
   log( '10', 'console' )
 ---
 event: x.wait_for_signature
@@ -76,6 +91,10 @@ code: |
 generic object: Individual
 code: |
   x.said_had_signed_on_other_device = False
+---
+generic object: Individual
+code: |
+  x.has_signed = False
 ---
 id: x.willing_to_sign
 generic object: Individual

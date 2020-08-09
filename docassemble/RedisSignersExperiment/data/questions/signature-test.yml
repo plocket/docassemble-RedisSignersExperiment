@@ -13,7 +13,7 @@ objects:
   #- others: DAList.using(object_type=Individual, auto_gather=False)
   - others: PeopleList.using(auto_gather=False)
   - action_data: DADict
-  - action_data[ 'parties' ] = DADict
+  #- action_data[ 'parties' ] = DADict
   - signers_by_id: DADict
 ---
 mandatory: True
