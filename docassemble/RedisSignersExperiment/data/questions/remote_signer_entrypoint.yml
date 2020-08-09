@@ -8,11 +8,8 @@ include:
 modules:
   - .signing_party
 ---
-# Use redis data to create values for local objects so that intrinsic names (`.instanceName`) can be used for `generic object:` in this interview. Not sure this will work.
 objects:
   - redis: DARedis
-  #- user: Individual
-  #- signer: Individual
 ---
 # Currently getting here with the url in the console of the initial interview
 mandatory: True
@@ -23,12 +20,6 @@ code: |
     signer = get_signer( url_args )
     log( type(signer), 'console' )
     
-    ##signer_data = redis_data['parties'][ url_args['party_id'] ]
-    ##log( signer_data.name, 'console' )
-    #signer.name = signer_data.name
-    #signer.id = signer_data.id
-    #user_data = redis_data['parties'][ url_args['user_id'] ]
-    #user = user_data.name
     user = redis_data['parties'][ url_args['user_id'] ]
 
     amend_signer( url_args, 'willing_to_sign', signer.willing_to_sign )
@@ -38,11 +29,6 @@ code: |
     else:
       signer.end_with_unwilling_to_sign
 
-    #signer.signature.set_attributes(persistent=True, private=False)
-    #redis_data['parties'][ url_args['party_id'] ].signature = signer.signature
-    #redis.set_data( url_args['action_key'], redis_data )
-    
-    #signer.status
     
   # TODO: If we don't do this, unauthorized users don't get a message? If we do this, though, other scripts can't get the url from here.
   #elif not defined('users[0]'):
@@ -52,13 +38,10 @@ id: x.after_signature
 event: x.after_signature
 generic object: Individual
 code: |
-  #x.signature.set_attributes(persistent=True, private=False)
   amend_signer( url_args, 'signature', x.signature )
   amend_signer( url_args, 'signature_date', today()  )
   amend_signer( url_args, 'has_signed', True )
 
-  #redis_data['parties'][ url_args['party_id'] ].signature = x.signature
-  #redis.set_data( url_args['action_key'], redis_data )
     
   x.status
 ---
