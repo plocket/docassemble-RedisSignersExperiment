@@ -75,31 +75,32 @@ code: |
   redis.set_data( action_key, action_data, expire=remote_siganure_expiration_ms )
   set_initial_redis_data = True
 ---
-code: |
-  #if not defined( 'local_signers' ):
-  #  local_signers = users[0]  # ?
-
-  # So others can see it on their own interviews
-  # There must be a better way. Also, this doesn't work.
-  # Maybe this doesn't need to be done...?
-  # Does it need to be done for all_signatures to be recomputed?
-  for local_signer in local_signers:
-    local_signer.signature.set_attributes(persistent=True, private=False)
-    signer_obj = action_data[ 'parties' ][ local_signer.id ]
-    signer_obj[ 'signature' ] = users[0].signature
-    signer_obj[ 'signature_date' ] = today()
-    signer_obj[ 'has_signed' ] = True
-
-  redis.set_data( action_key, action_data )
-  set_redis_user_signature = True
+# TODO: Figure out another way to show signed document to remote users
+#code: |
+#  #if not defined( 'local_signers' ):
+#  #  local_signers = users[0]  # ?
+#
+#  # So others can see it on their own interviews
+#  # There must be a better way. Also, this doesn't work.
+#  # Maybe this doesn't need to be done...?
+#  # Does it need to be done for all_signatures to be recomputed?
+#  for local_signer in local_signers:
+#    local_signer.signature.set_attributes(persistent=True, private=False)
+#    signer_obj = action_data[ 'parties' ][ local_signer.id ]
+#    signer_obj[ 'signature' ] = users[0].signature
+#    signer_obj[ 'signature_date' ] = today()
+#    signer_obj[ 'has_signed' ] = True
+#
+#  redis.set_data( action_key, action_data )
+#  set_redis_user_signature = True
 ---
 event: x.after_signature
 generic object: Individual
 code: |
-  set_redis_user_signature  # Must create `local_signers`. Could abstract it more, but it gets a little silly.
+  #set_redis_user_signature  # Must create `local_signers`. Could abstract it more, but it gets a little silly.
   for remote_signer in remote_signers:
     remote_signer.was_notified
-  users[0].status
+  after_remote_signers_notified
 ---
 generic object: Individual
 code: |
@@ -128,14 +129,15 @@ code: |
   signing_parties = new_data[ 'parties' ]
   for signer in all_signers:
     if signer.id in signing_parties:
-      signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
-      if signer.has_signed:
-        signer.signature = signing_parties[ signer.id ][ 'signature' ]
-      ## TODO: Try below instead
-      ## May remove the need for set_redis_user_signature above
-      #if signing_parties[ signer.id ][ 'has_signed' ]:
-      #  signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
+      #signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
+      #if signer.has_signed:
       #  signer.signature = signing_parties[ signer.id ][ 'signature' ]
+
+      # TODO: Test this thoroughly
+      # May remove the need for `set_redis_user_signature`
+      if signing_parties[ signer.id ][ 'has_signed' ]:
+        signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
+        signer.signature = signing_parties[ signer.id ][ 'signature' ]
 ---
 generic object: Individual
 code: |
@@ -150,6 +152,10 @@ code: |
 ###################
 #  Customizable?/Should be customized
 ##################
+---
+event: after_remote_signers_notified
+code: |
+  users[0].status
 ---
 code: |
   action_data = { 'user_names': str(users), 'signed_doc': signature_doc, } #'preview': signature_doc }
