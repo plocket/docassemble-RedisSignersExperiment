@@ -5,44 +5,53 @@ include:
   - remote_sign_on_device.yml
   #- docassemble.MAVirtualCourt:basic-questions.yml
 ---
-# Use redis data to create values for local objects so that intrinsic names (`.instanceName`) can be used for `generic object:` in this interview. Not sure this will work.
+modules:
+  - .signing_party
+---
 objects:
   - redis: DARedis
-  - user: Individual
   - signer: Individual
 ---
 # Currently getting here with the url in the console of the initial interview
 mandatory: True
 code: |
   if 'action_key' in url_args:
-    #log( 'action_key: ' + url_args['action_key'], 'console' )
-    redis_data = redis.get_data( url_args['action_key'] )
-    
-    signer_data = redis_data['parties'][ url_args['party_id'] ]
-    #log( signer_data.name, 'console' )
-    signer.name = signer_data.name
-    signer.id = signer_data.id
-    user_data = redis_data['parties'][ url_args['user_id'] ]
-    user = user_data.name
-    #log( 'signer id: ' + signer_data.id, 'console' )
-    log( '1', 'console' )
-    signer.sign_on_device
-    log( 'A', 'console' )
+    party = get_signer( url_args )
+    if party:
+      signer.name.first = party[ 'name' ]
+      signer.has_signed = party[ 'has_signed' ]
+      was_willing = party[ 'willing_to_sign' ]
+      user_name = redis.get_data( url_args['action_key'] )['parties'][ url_args[ 'user_id' ]][ 'name' ]
+      
+      # TODO: should this ask them about being willing to sign every time?
+      if was_willing is True or signer.willing_to_sign:
+        amend_signer( url_args, 'willing_to_sign', True )
+        signer.sign_on_device
+      else:
+        amend_signer( url_args, 'willing_to_sign', False )
+        signer.end_with_unwilling_to_sign
 
-    #signer.signature.set_attributes(persistent=True, private=False)
-    #redis_data['parties'][ url_args['party_id'] ].signature = signer.signature
-    #redis.set_data( url_args['action_key'], redis_data )
-    
-    #signer.status
+  # TODO: If we don't do this, unauthorized users don't get a message? If we do this, though, other scripts can't get the url from here.
+  #elif not defined('users[0]'):
+  #  unauthorized
+---
+#code: |
+#    original_instance_name = signer.instanceName
 ---
 id: x.after_signature
 event: x.after_signature
 generic object: Individual
 code: |
-  x.signature.set_attributes(persistent=True, private=False)
-  redis_data['parties'][ url_args['party_id'] ].signature = x.signature
-  redis.set_data( url_args['action_key'], redis_data )
-    
+  amend_signer( url_args, 'signature', x.signature )
+  amend_signer( url_args, 'signature_date', today()  )
+  amend_signer( url_args, 'has_signed', True )
+
+  x.after_signature_saved
+---
+id: x.after_signature_saved
+event: x.after_signature_saved
+generic object: Individual
+code: |
   x.status
 ---
 # Doc is `None` when we try to use signatures
@@ -53,7 +62,7 @@ prevent going back: True
 question: |
   Signature status for ${ x }
 subquestion: |
-  ${ user }'s document.
+  ${ user_name }'s document.
   
   ${ redis.get_data( url_args['action_key'] )[ 'signed_doc' ] }
 ---
@@ -72,3 +81,29 @@ code: |
     new_session = '1', i='docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
   )
 ---
+id: x.end_with_unwilling_to_sign
+event: x.end_with_unwilling_to_sign
+generic object: Individual
+code: |
+  amend_signer( url_args, 'willing_to_sign', False )
+  x.unwilling_screen
+---
+id: unwilling to sign end
+event: x.unwilling_screen
+question: |
+  Thank you and goodbye
+buttons:
+  - exit
+---
+id: unauthorized
+event: unauthorized
+question: |
+  Thank you and goodbye
+buttons:
+  - exit
+---
+id: x.willing_to_sign
+generic object: Individual
+question: |
+  Are you willing to sign this document?
+yesno: x.willing_to_sign

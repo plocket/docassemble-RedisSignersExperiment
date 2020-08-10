@@ -4,8 +4,8 @@ comment: |
   `generic object` is being used to allow more flexibility for developers using this module.
   
   Limitations:
+  - Devices don't prevent each other from signing. TODO: Try sending action arguments with every keypress and... something and checking action arguments in every block. Not sure that's possible.
   - Right now the signer can't pick any device they want. It only differentiates between using a computer and a mobile device. A mobile device will always only present a signature. The execution order for handling multiple devices is complex unless it's broken into multiple interviews.
-  - It can send a text, but not an email.
 ---
 objects:
   - redis: DARedis
@@ -13,46 +13,26 @@ objects:
 modules:
   - .signing_party
 ---
+# TODO: Try using action arguments for all devices
+
+# This was going to be flexible enough to use in any interview
+# but I'm not sure now. Maybe an action argument would be good.
 event: x.sign_on_device
 generic object: Individual
 code: |
-  # x and the redis object are deliberately seperate
-  party = SigningParty( url_args )
-  log( '2', 'console' )
-  log( party.exists, 'console' )
-  if party.exists and party.signature != '' and party.signature != None:
-    log( '3', 'console' )
-    #log( party.signature, 'console' )  # Test
-    log( '4', 'console' )
-    x.after_signature
+  # current bugs
+  # - Remote users never see the doc update (not MVP) (multiuser da example may have some clues)
+  x.has_signed = False  # False to start
 
+  # which_device: atm really means 'wants to use any computer'
+  # If not on computer or wants to sign on computer
+  if (device() and not device().is_pc) or x.which_device == 'this device':
+    x.signature.set_attributes(persistent=True, private=False)
+    x.after_signature
   else:
-    log( '5', 'console' )
-    x.willing_to_sign
-    party.amend( key='willing_to_sign', value=x.willing_to_sign )
-    if not x.willing_to_sign:
-      x.end_with_unwilling_to_sign
-      log( '6', 'console' )
-    else:
-      log( '7', 'console' )
-      # which_device: atm really means 'wants to use any computer'
-      # If not on computer or wants to sign on computer
-      if (device() and not device().is_pc) or x.which_device == 'this device':
-        log( '8', 'console' )
-        party.amend( key='signature', value=x.signature )
-        x.signature_date = today()
-        party.amend( key='signature_date', value=x.signature_date )
-        x.after_signature
-      else:
-        log( '9', 'console' )
-        x.mobile_number
-        x.send_sms_signature_link
-        #if x.send_method == 'text':
-        #  x.send_sms_signature_link
-        #elif x.send_method == 'email':  # Not implemented for MVP
-        #  x.send_email_signature_link
-        x.wait_for_signature
-  log( '10', 'console' )
+    x.mobile_number
+    x.send_signature_link
+    x.wait_for_signature
 ---
 event: x.wait_for_signature
 generic object: Individual
@@ -77,6 +57,19 @@ generic object: Individual
 code: |
   x.said_had_signed_on_other_device = False
 ---
+generic object: Individual
+code: |
+  x.has_signed = False
+---
+generic object: Individual
+code: |
+  # TODO: Send with action arguments
+  #if x.send_method == 'text':
+  #  x.send_sms_signature_link
+  #elif x.send_method == 'email':  # Not implemented for MVP
+  #  x.send_email_signature_link
+  x.send_signature_link = True
+---
 id: x.willing_to_sign
 generic object: Individual
 question: |
@@ -91,6 +84,7 @@ question: |
 subquestion: |
   You can close this window now.
 ---
+# TODO: Always send with action arguments with unique ID
 id: x.which_device
 generic object: Individual
 question: |
