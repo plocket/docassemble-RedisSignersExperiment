@@ -4,7 +4,7 @@ modules:
 ---
 include:
   - remote_sign_on_device.yml
-  - remote_signer_entrypoint.yml
+  #- remote_signer_entrypoint.yml
 ---
 objects:
   - redis: DARedis
