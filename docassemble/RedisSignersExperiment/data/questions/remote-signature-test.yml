@@ -9,11 +9,8 @@ include:
 ---
 objects:
   - redis: DARedis
-  - all_signers: DAList.using(object_type=Individual, auto_gather=False)
+  - all_signers: DAList.using(object_type=Individual, auto_gather=False)  # TODO: to plain list?
   - others: DAList.using(object_type=Individual, auto_gather=False)
-  - action_data: DADict.using(there_is_another=False, gathered= True)
-  - signatures: DADict.using(there_is_another=False, gathered= True)
-  - signers_by_id: DADict.using(there_is_another=False, gathered= True)
 ---
 mandatory: True
 code: |
@@ -29,6 +26,7 @@ code: |
   users[0].has_signed = False
   users.gathered = True
   users.there_is_another = False
+  local_signers = users
 
   others[0].name.first
   others[0].has_signed = False
@@ -36,16 +34,11 @@ code: |
   others[1].has_signed = False
   others.gathered = True
   others.there_is_another = False
+  remote_signers = [ others[0], others[1] ]
 
   all_signers = users + others
   all_signers.gathered = True
   all_signers.there_is_another = False
-
-  for signer in all_signers:
-    signers_by_id[ signer.id ] = signer
-  # Needed these to be defined at one point...
-  signers_by_id.there_is_another = False
-  signers_by_id.gathered = True
 
   ## TODO: Discuss - This sort of looks like there's only one user per interview, so maybe we don't need a list of users.
 
@@ -58,42 +51,38 @@ code: |
 
   set_initial_redis_data
   
-  log( others[0].signature_url, 'console' )
-  log( others[1].signature_url, 'console' )
+  #log( others[0].signature_url, 'console' )
+  #log( others[1].signature_url, 'console' )
   
-  users[0].willing_to_sign = True
+  users[0].willing_to_sign = True  # Can probably get rid of this. Not in flow anymore.
   users[0].sign_on_device
 ---
 code: |
   action_key = get_random_chars()
 ---
 code: |
-  action_data[ 'user_id' ] = users[0].id
-  #log( 'user id: ' + users[0].id, 'console' )
+  action_data = { 'user_id': users[0].id, 'signed_doc': signature_doc, } #'preview': signature_doc
+  
   parties = {}
-  for signer_id in signers_by_id:
-    parties[ signer_id ] = {
-      "has_signed": False,
-      "willing_to_sign": None,
-      "name": str(signers_by_id[ signer_id ])
+  for signer in all_signers:
+    parties[ signer.id ] = {
+      "has_signed": False, "willing_to_sign": None, "name": str( signer )
     }
   action_data[ 'parties' ] = parties
-
-  #action_data[ 'preview' ] = signature_doc
-  action_data[ 'signed_doc' ] = signature_doc
-  action_data.there_is_another = False
-  action_data.gathered = True
   
-  redis.set_data( action_key, action_data, expire=(1* 6 * 60 * 60 * 1000) )
+  redis.set_data( action_key, action_data, expire=remote_siganure_expiration_ms )
   set_initial_redis_data = True
 ---
 code: |
   # So others can see it on their own interviews
-  # There must be a better way
-  users[0].signature.set_attributes(persistent=True, private=False)
-  action_data[ 'parties' ][ users[0].id ][ 'signature' ] = users[0].signature
-  action_data[ 'parties' ][ users[0].id ][ 'signature_date' ] = today()
-  action_data[ 'parties' ][ users[0].id ][ 'has_signed' ] = True
+  # There must be a better way. Also, this doesn't work
+  for local_signer in local_signers:
+    local_signer.signature.set_attributes(persistent=True, private=False)
+    signer_obj = action_data[ 'parties' ][ local_signer.id ]
+    signer_obj[ 'signature' ] = users[0].signature
+    signer_obj[ 'signature_date' ] = today()
+    signer_obj[ 'has_signed' ] = True
+
   redis.set_data( action_key, action_data )
   set_redis_user_signature = True
 ---
@@ -101,84 +90,31 @@ event: x.after_signature
 generic object: Individual
 code: |
   set_redis_user_signature
-  others[0].was_notified
+  for remote_signer in remote_signers:
+    remote_signer.was_notified
   users[0].status
 ---
-code: |
-  set_initial_signatures = True
-#  others[0].signature = ''
-#  others[1].signature = ''
----
 generic object: Individual
 code: |
-  #message_success = send_sms(task='send cosigner signature link', to=x.mobile_number, template=x.sms_template)
-  
-  #message_success = send_email(to=x, template=x.email_template)
+  if x.send_method == 'text': 
+    x.message_result = send_sms(task='send link to remote signer', to=x.mobile_number, template=x.sms_template)
+  else:
+    x.message_result = send_email(to=x, template=x.email_template)
   x.was_notified = True
 ---
-id: get info for sending link
-generic object: Individual
-question: |
-  How do you want to send the link to ${ x }
-fields:
-  - Phone number to text: x.mobile_number
-    required: False
-  - Email: x.email
-    required: False
-continue button field: x.send_method
----
-id: sms template multiuser
-generic object: Individual
-template: x.sms_template
-content: |
-  Dear ${ x },
-  You decided to sign the document on this device. Go to ${ x.signature_url } to sign your document
----
-id: email template multiuser
-generic object: Individual
-template: x.email_template
-subject: Remote signature test
-content: |
-  Dear ${ x },
-  You decided to sign the document on this device. Go to ${ x.signature_url } to sign your document
----
-generic object: Individual
-question: |
-  Name
-fields:
-  - First: x.name.first
----
 generic object: Individual
 code: |
+  x.signature_url_string = interview_url(
+    action_key = action_key,
+    user_id = users[0].id,
+    party_id = x.id,
+    new_session = '1', i='docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
+  )
+
   x.signature_url = shortenMe( x.signature_url_string ).shortenedURL
 ---
-id: x.signature
-generic object: Individual
-question: |
-  ${x}'s signature
-signature: x.signature
----
-id: document
-event: x.status
-reconsider:
-  - get_current_signatures
-  - signature_doc
-generic object: Individual
-prevent going back: True
-question: |
-  Test document signatures for ${ users[0] }
-subquestion: |
-  ${ signature_doc }
----
-attachment:
-  name: Signatures doc
-  variable name: signature_doc
-  filename: signatures
-  docx template file: test-signatures.docx
-  #persistent: True
-  #private: False
----
 event: get_current_signatures
+# Updates user doc with remote signatures
 code: |
   new_data = redis.get_data( action_key )
   signing_parties = new_data[ 'parties' ]
@@ -198,3 +134,73 @@ code: |
   def get_random_chars(num_chars=10):
     return ''.join(random.choice(string.ascii_lowercase) for i in range(10))
 ---
+###################
+#  Customizable?/Should be customized
+##################
+---
+code: |
+  remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
+---
+id: sms template multiuser
+generic object: Individual
+template: x.sms_template
+content: |
+  Dear ${ x },
+  You decided to sign the document on this device. Go to ${ x.signature_url } to sign your document.
+---
+id: email template multiuser
+generic object: Individual
+template: x.email_template
+subject: Remote signature test
+content: |
+  Dear ${ x },
+  You decided to sign the document on this device. Go to ${ x.signature_url } to sign your document.
+---
+generic object: Individual
+question: |
+  Name
+fields:
+  - First: x.name.first
+---
+id: x.signature
+generic object: Individual
+question: |
+  ${x}'s signature
+signature: x.signature
+---
+id: document
+event: x.status
+reconsider:
+  - get_current_signatures
+  - signature_doc
+generic object: Individual
+#prevent going back: True
+question: |
+  Test document signatures for ${ users[0] }
+subquestion: |
+  ${ signature_doc }
+---
+id: how to send to remote signer
+generic object: Individual
+question: |
+  Do you want to send this to ${ x } by email or text?
+fields:
+  - no label: x.send_method
+    datatype: radio
+    choices:
+      - Email: email
+      - Text: text
+  - What is their email?: x.email
+    js show if: |
+      val("x.send_method") == "email"
+  - What is their phone number?: x.mobile_number
+    js show if: |
+      val("x.send_method") == "text"
+---
+attachment:
+  name: Signatures doc
+  variable name: signature_doc
+  filename: signatures
+  docx template file: test-signatures.docx
+  #persistent: True
+  #private: False

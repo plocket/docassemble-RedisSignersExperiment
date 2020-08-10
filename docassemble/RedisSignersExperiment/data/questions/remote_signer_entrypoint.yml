@@ -21,7 +21,6 @@ code: |
       signer.name.first = party[ 'name' ]
       signer.has_signed = party[ 'has_signed' ]
       was_willing = party[ 'willing_to_sign' ]
-      user_name = redis.get_data( url_args['action_key'] )['parties'][ url_args[ 'user_id' ]][ 'name' ]
       
       # TODO: should this ask them about being willing to sign every time?
       if was_willing is True or signer.willing_to_sign:
@@ -62,7 +61,7 @@ prevent going back: True
 question: |
   Signature status for ${ x }
 subquestion: |
-  ${ user_name }'s document.
+  ${ redis.get_data( url_args['action_key'] )['parties'][ url_args[ 'user_id' ]][ 'name' ] }'s document.
   
   ${ redis.get_data( url_args['action_key'] )[ 'signed_doc' ] }
 ---
@@ -71,15 +70,6 @@ generic object: Individual
 question: |
   Signature ${ x }
 signature: x.signature
----
-generic object: Individual
-code: |
-  x.signature_url_string = interview_url(
-    action_key = action_key,
-    user_id = users[0].id,
-    party_id = x.id,
-    new_session = '1', i='docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
-  )
 ---
 id: x.end_with_unwilling_to_sign
 event: x.end_with_unwilling_to_sign
