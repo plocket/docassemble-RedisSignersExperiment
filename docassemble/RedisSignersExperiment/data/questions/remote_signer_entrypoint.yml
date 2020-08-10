@@ -61,7 +61,7 @@ prevent going back: True
 question: |
   Signature status for ${ x }
 subquestion: |
-  ${ redis.get_data( url_args['action_key'] )['parties'][ url_args[ 'user_id' ]][ 'name' ] }'s document.
+  ${ redis.get_data( url_args['action_key'] )['user_names'] }'s document.
   
   ${ redis.get_data( url_args['action_key'] )[ 'signed_doc' ] }
 ---
