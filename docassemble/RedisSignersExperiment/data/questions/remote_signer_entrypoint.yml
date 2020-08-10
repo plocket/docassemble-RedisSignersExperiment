@@ -10,29 +10,33 @@ modules:
 ---
 objects:
   - redis: DARedis
+  - signer: Individual
 ---
 # Currently getting here with the url in the console of the initial interview
 mandatory: True
 code: |
-
   if 'action_key' in url_args:
-    redis_data = redis.get_data( url_args['action_key'] )
-    signer = get_signer( url_args )
-    log( type(signer), 'console' )
-    
-    user = redis_data['parties'][ url_args['user_id'] ]
+    party = get_signer( url_args )
+    if party:
+      signer.name.first = party[ 'name' ]
+      signer.has_signed = party[ 'has_signed' ]
+      was_willing = party[ 'willing_to_sign' ]
+      user_name = redis.get_data( url_args['action_key'] )['parties'][ url_args[ 'user_id' ]][ 'name' ]
+      
+      # TODO: should this ask them about being willing to sign every time?
+      if was_willing is True or signer.willing_to_sign:
+        amend_signer( url_args, 'willing_to_sign', True )
+        signer.sign_on_device
+      else:
+        amend_signer( url_args, 'willing_to_sign', False )
+        signer.end_with_unwilling_to_sign
 
-    amend_signer( url_args, 'willing_to_sign', signer.willing_to_sign )
-    if signer.willing_to_sign:
-      #log( 'signer id: ' + signer_data.id, 'console' )
-      signer.sign_on_device
-    else:
-      signer.end_with_unwilling_to_sign
-
-    
   # TODO: If we don't do this, unauthorized users don't get a message? If we do this, though, other scripts can't get the url from here.
   #elif not defined('users[0]'):
   #  unauthorized
+---
+#code: |
+#    original_instance_name = signer.instanceName
 ---
 id: x.after_signature
 event: x.after_signature
@@ -42,7 +46,12 @@ code: |
   amend_signer( url_args, 'signature_date', today()  )
   amend_signer( url_args, 'has_signed', True )
 
-    
+  x.after_signature_saved
+---
+id: x.after_signature_saved
+event: x.after_signature_saved
+generic object: Individual
+code: |
   x.status
 ---
 # Doc is `None` when we try to use signatures
@@ -53,7 +62,7 @@ prevent going back: True
 question: |
   Signature status for ${ x }
 subquestion: |
-  ${ user }'s document.
+  ${ user_name }'s document.
   
   ${ redis.get_data( url_args['action_key'] )[ 'signed_doc' ] }
 ---
@@ -96,6 +105,5 @@ buttons:
 id: x.willing_to_sign
 generic object: Individual
 question: |
-  x.willing_to_sign
+  Are you willing to sign this document?
 yesno: x.willing_to_sign
----

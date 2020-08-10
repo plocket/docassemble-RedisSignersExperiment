@@ -70,9 +70,14 @@ code: |
 code: |
   action_data[ 'user_id' ] = users[0].id
   #log( 'user id: ' + users[0].id, 'console' )
-
-  action_data[ 'parties' ] = signers_by_id
-  #log( signers_by_id, 'console' )
+  parties = {}
+  for signer_id in signers_by_id:
+    parties[ signer_id ] = {
+      "has_signed": False,
+      "willing_to_sign": None,
+      "name": str(signers_by_id[ signer_id ])
+    }
+  action_data[ 'parties' ] = parties
 
   #action_data[ 'preview' ] = signature_doc
   action_data[ 'signed_doc' ] = signature_doc
@@ -83,11 +88,12 @@ code: |
   set_initial_redis_data = True
 ---
 code: |
-  # So others can see it on their own
+  # So others can see it on their own interviews
+  # There must be a better way
   users[0].signature.set_attributes(persistent=True, private=False)
-  action_data[ 'parties' ][ users[0].id ].signature = users[0].signature
-  action_data[ 'parties' ][ users[0].id ].signature_date = today()
-  action_data[ 'parties' ][ users[0].id ].has_signed = True
+  action_data[ 'parties' ][ users[0].id ][ 'signature' ] = users[0].signature
+  action_data[ 'parties' ][ users[0].id ][ 'signature_date' ] = today()
+  action_data[ 'parties' ][ users[0].id ][ 'has_signed' ] = True
   redis.set_data( action_key, action_data )
   set_redis_user_signature = True
 ---
@@ -99,9 +105,9 @@ code: |
   users[0].status
 ---
 code: |
-  others[0].signature = ''
-  others[1].signature = ''
   set_initial_signatures = True
+#  others[0].signature = ''
+#  others[1].signature = ''
 ---
 generic object: Individual
 code: |
@@ -178,12 +184,9 @@ code: |
   signing_parties = new_data[ 'parties' ]
   for signer in all_signers:
     if signer.id in signing_parties:
-      log( 'has signed: ', 'console' )
-      log( signer.id, 'console' )
-      log( signing_parties[ signer.id ].has_signed, 'console' )
-      if signing_parties[ signer.id ].has_signed:
-        signer.signature = signing_parties[ signer.id ].signature
-  
+      signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
+      if signer.has_signed:
+        signer.signature = signing_parties[ signer.id ][ 'signature' ]
 ---
 generic object: Individual
 code: |

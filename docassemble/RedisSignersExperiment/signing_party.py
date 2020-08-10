@@ -4,9 +4,7 @@ from docassemble.base.util import DARedis, Individual, log #, DAObject
 #class SigningParty(DAObject):
 class SigningParty():
   # Only uses redis if url arguments exist to allow this module to be used independently of url arguments. Somewhere else will take care of authentication?
-  #def init(self, url_args):
   def __init__(self, url_args, obj):
-    #super().init(*pargs, **kwargs)
     self.exists = False
     log( 'a', 'console' )
     # In url_args there should be:
@@ -38,6 +36,8 @@ class SigningParty():
       #log( valueOrNone( party, 'willing_to_sign' ), 'console' )
       #self.amend( 'willing_to_sign', valueOrNone( party, 'willing_to_sign' ))
       #log( self.willing_to_sign, 'console' )
+    else:
+      return False
 
   def amend(self, key, value):
     if self.exists:
@@ -59,17 +59,12 @@ def valueOrNone( dictionary, key ):
 redis = DARedis()
   
 def amend_signer( url_args, key, value ):
-  log( 'amend:', 'console' )
-  log( key, 'console' )
-  log( value, 'console' )
-
   if 'action_key' in url_args:
     party_id = url_args['party_id']
-    action_data = redis.get_data( url_args[ 'action_key' ] )
-    log( action_data['parties'][ party_id ], 'console' )  # party
+    action_data = redis.get_data( url_args['action_key'] )
 
-    # set party attribute
-    setattr( action_data['parties'][ party_id ], key, value )
+    # set party key
+    action_data['parties'][ party_id ][ key ] = value
     redis.set_data( url_args[ 'action_key' ], action_data )
     return action_data['parties'][ party_id ]
   else:
@@ -78,7 +73,9 @@ def amend_signer( url_args, key, value ):
 def get_signer( url_args ):
   if 'action_key' in url_args:
     party_id = url_args['party_id']
-    return redis.get_data( url_args[ 'action_key' ] )['parties'][ party_id ]
+    if party_id in redis.get_data( url_args['action_key'] )['parties']:
+      return redis.get_data( url_args['action_key'] )['parties'][ party_id ]
+    else:
+      return False
   else:
-    return None
-
+    return False
