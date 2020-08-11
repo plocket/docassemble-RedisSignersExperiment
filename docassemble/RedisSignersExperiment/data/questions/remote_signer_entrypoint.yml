@@ -1,12 +1,8 @@
 modules:
-  - docassemble.VirtualCourtToolbox.shortenURL
+  - .signing_party
 ---
 include:
   - remote_sign_on_device.yml
-  #- docassemble.MAVirtualCourt:basic-questions.yml
----
-modules:
-  - .signing_party
 ---
 objects:
   - redis: DARedis
@@ -21,31 +17,53 @@ code: |
       signer.name.first = party[ 'name' ]
       signer.has_signed = party[ 'has_signed' ]
       was_willing = party[ 'willing_to_sign' ]
+      log( was_willing )
       
-      # TODO: should this ask them about being willing to sign every time?
-      if was_willing is True or signer.willing_to_sign:
+      ## TODO: should this ask willing to sign every time? Currently:
+      ## If was willing to sign, skip the question, otherwise ask again.
+      #if was_willing is True or signer.willing_to_sign:
+      
+      # Skip question if they've already signed
+      # Should `.has_signed` be handled here or passed on to `.sign_on_device` which already has to be set up to handle it?
+      if signer.has_signed or signer.willing_to_sign:
         amend_signer( url_args, 'willing_to_sign', True )
         signer.sign_on_device
       else:
         amend_signer( url_args, 'willing_to_sign', False )
-        signer.end_with_unwilling_to_sign
-
-  # TODO: If we don't do this, unauthorized users don't get a message? If we do this, though, other scripts can't get the url from here.
-  #elif not defined('users[0]'):
+        signer.after_unwilling_to_sign
+        
+  ## Untested
+  #else:
   #  unauthorized
 ---
-#code: |
-#    original_instance_name = signer.instanceName
+###################
+#  Must be defined
+##################
 ---
 id: x.after_signature
 event: x.after_signature
 generic object: Individual
 code: |
-  amend_signer( url_args, 'signature', x.signature )
-  amend_signer( url_args, 'signature_date', today()  )
-  amend_signer( url_args, 'has_signed', True )
+  if not x.has_signed:
+    amend_signer( url_args, 'signature', x.signature )
+    amend_signer( url_args, 'signature_date', today()  )
+    amend_signer( url_args, 'has_signed', True )
 
   x.after_signature_saved
+---
+id: x.after_unwilling_to_sign
+event: x.after_unwilling_to_sign
+generic object: Individual
+code: |
+  amend_signer( url_args, 'willing_to_sign', False )
+  bah = get_signer( url_args )
+  log( 'bah' )
+  log( bah[ 'willing_to_sign' ] )
+  x.after_unwilling_to_sign_saved
+---
+###################
+#  Customizable?/Should be customized
+##################
 ---
 id: x.after_signature_saved
 event: x.after_signature_saved
@@ -71,26 +89,20 @@ question: |
   Signature ${ x }
 signature: x.signature
 ---
-id: x.end_with_unwilling_to_sign
-event: x.end_with_unwilling_to_sign
-generic object: Individual
-code: |
-  amend_signer( url_args, 'willing_to_sign', False )
-  x.unwilling_screen
----
 id: unwilling to sign end
-event: x.unwilling_screen
+generic object: Individual
+event: x.after_unwilling_to_sign_saved
 question: |
   Thank you and goodbye
 buttons:
-  - exit
+  - Exit: exit
 ---
 id: unauthorized
 event: unauthorized
 question: |
   Thank you and goodbye
 buttons:
-  - exit
+  - Exit: exit
 ---
 id: x.willing_to_sign
 generic object: Individual

@@ -1,17 +1,11 @@
 comment: |
-  A flow for allowing non-user signers to sign on the device with which they are most comfortable.
+  A flow for allowing signers to sign on the device with which they are most comfortable.
 
   `generic object` is being used to allow more flexibility for developers using this module.
   
   Limitations:
   - Devices don't prevent each other from signing. TODO: Try sending action arguments with every keypress and... something and checking action arguments in every block. Not sure that's possible.
   - Right now the signer can't pick any device they want. It only differentiates between using a computer and a mobile device. A mobile device will always only present a signature. The execution order for handling multiple devices is complex unless it's broken into multiple interviews.
----
-objects:
-  - redis: DARedis
----
-modules:
-  - .signing_party
 ---
 # TODO: Try using action arguments for all devices
 
@@ -22,11 +16,14 @@ generic object: Individual
 code: |
   # current bugs
   # - Remote users never see the doc update (not MVP) (multiuser da example may have some clues)
-  x.has_signed = False  # False to start
+  #x.has_signed = False  # False to start
+  
+  if x.has_signed:
+    x.after_signature
 
   # which_device: atm really means 'wants to use any computer'
   # If not on computer or wants to sign on computer
-  if (device() and not device().is_pc) or x.which_device == 'this device':
+  elif (device() and not device().is_pc) or x.which_device == 'this device':
     x.signature.set_attributes(persistent=True, private=False)
     x.after_signature
   else:

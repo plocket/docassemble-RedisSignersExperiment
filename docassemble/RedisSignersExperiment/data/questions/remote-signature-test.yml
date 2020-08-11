@@ -1,10 +1,10 @@
 ---
+# Make own function to make this more independent?
 modules:
   - docassemble.VirtualCourtToolbox.shortenURL
 ---
 include:
   - remote_sign_on_device.yml
-  #- remote_signer_entrypoint.yml
 ---
 objects:
   - redis: DARedis
@@ -109,7 +109,7 @@ code: |
   users[0].status
 ---
 code: |
-  action_data = { 'user_names': str(users), 'signed_doc': signature_doc, } #'preview': signature_doc }
+  action_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
 ---
 code: |
   remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
