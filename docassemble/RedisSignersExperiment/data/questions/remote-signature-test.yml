@@ -167,7 +167,7 @@ question: |
 subquestion: |
   ${ signature_doc }
   
-  ${ action_button_html('javascript:daRefreshSubmit()', label='Check again <i class="fas fa-sync-alt"></i>', size='lg') }
+  ${ action_button_html('javascript:daShowSpinner();daRefreshSubmit()', label='Check again <i class="fas fa-sync-alt"></i>', size='lg') }
 ---
 id: how to send to remote signer
 generic object: Individual
