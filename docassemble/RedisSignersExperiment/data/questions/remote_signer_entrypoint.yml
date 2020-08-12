@@ -11,27 +11,40 @@ objects:
 # Currently getting here with the url in the console of the initial interview
 mandatory: True
 code: |
+  get_remote_signature
+---
+event: get_remote_signature
+code: |
+  data = None
   if 'action_key' in url_args:
-    party = get_signer( url_args )
+    data = url_args
+  elif action_argument('action_key'):
+    data = {
+      #'parent_interview_data_id': action_argument('parent_interview_data_id'),
+      'action_key': action_argument('action_key'),
+      'party_id': action_argument('party_id')
+    }
+
+  if data:
+    #parent_interview_data_id = data['parent_interview_data_id']
+    action_key = data['action_key']
+
+    party = get_signer( data )
     if party:
+      signer.id = data['party_id']
       signer.name.first = party[ 'name' ]
       signer.has_signed = party[ 'has_signed' ]
       was_willing = party[ 'willing_to_sign' ]
-      log( was_willing )
-      
-      ## TODO: should this ask willing to sign every time? Currently:
-      ## If was willing to sign, skip the question, otherwise ask again.
-      #if was_willing is True or signer.willing_to_sign:
-      
-      # Skip question if they've already signed
+
+      # Skip question if they've already signed or were already willing to sign.
       # Should `.has_signed` be handled here or passed on to `.sign_on_device` which already has to be set up to handle it?
-      if signer.has_signed or signer.willing_to_sign:
+      if signer.has_signed or was_willing is True or signer.willing_to_sign:
         amend_signer( url_args, 'willing_to_sign', True )
         signer.sign_on_device
       else:
         amend_signer( url_args, 'willing_to_sign', False )
         signer.after_unwilling_to_sign
-        
+
   ## Untested
   #else:
   #  unauthorized
@@ -56,10 +69,26 @@ event: x.after_unwilling_to_sign
 generic object: Individual
 code: |
   amend_signer( url_args, 'willing_to_sign', False )
-  bah = get_signer( url_args )
-  log( 'bah' )
-  log( bah[ 'willing_to_sign' ] )
   x.after_unwilling_to_sign_saved
+---
+generic object: Individual
+template: x.sms_device_template
+content:
+  You have chosen to sign on this device, ${ x }. [Sign your document](${ short_device_choice_url }). ${ short_device_choice_url }
+---
+generic object: Individual
+code: |
+  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=x.id )
+  #parent_interview_data_id=parent_interview_data_id,
+---
+generic object: Individual
+code: |
+  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=x.id )
+  #parent_interview_data_id=parent_interview_data_id,
+  short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
+---
+modules:
+  - docassemble.VirtualCourtToolbox.shortenURL
 ---
 ###################
 #  Customizable?/Should be customized

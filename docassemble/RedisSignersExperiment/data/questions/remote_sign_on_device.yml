@@ -25,12 +25,17 @@ code: |
   # which_device: atm really means 'wants to use any computer'
   # If not on computer or wants to sign on computer
   elif (device() and not device().is_pc) or x.which_device == 'this device':
+    check_check
     x.signature.set_attributes(persistent=True, private=False)
     x.after_signature
   else:
     x.mobile_number
     x.send_signature_link
     x.wait_for_signature
+---
+question: |
+  Just checking
+continue button field: check_check
 ---
 event: x.wait_for_signature
 generic object: Individual
@@ -62,11 +67,32 @@ code: |
 generic object: Individual
 code: |
   # TODO: Send with action arguments
+  # action arguments are in templates
   #if x.send_method == 'text':
   #  x.send_sms_signature_link
   #elif x.send_method == 'email':  # Not implemented for MVP
   #  x.send_email_signature_link
+  x.message_result = send_sms(task='send link to other device', to=x.mobile_number, template=x.sms_device_template)
   x.send_signature_link = True
+---
+#generic object: Individual
+#template: x.sms_device_template
+#content:
+#  You have chosen to sign on this device, ${ x }. [Sign your document](${ interview_url_action('x.sign_on_device', status='normal') }).
+---
+#generic object: Individual
+#code: |
+#  x.signature_url_string = interview_url(
+#    action_key = action_key,
+#    party_id = x.id,
+#    new_session = '1',
+#    i=remote_signer_url_end
+#  )
+#
+#  x.signature_url = shortenMe( x.signature_url_string ).shortenedURL
+---
+#modules:
+#  - docassemble.VirtualCourtToolbox.shortenURL
 ---
 id: x.willing_to_sign
 generic object: Individual
@@ -129,20 +155,20 @@ subquestion: |
 fields:
   - Number to text: x.mobile_number
 ---
-id: x.send_sms_signature_link
-event: x.send_sms_signature_link
-generic object: Individual
-code: |
-  log( 'send_sms_signature_link', 'console' )
-  log( url_args, 'console')
----
-id: x.send_email_signature_link
-event: x.send_email_signature_link
-generic object: Individual
-code: |
-  # Will need url arguments
-  log( 'send_email_signature_link', 'console' )
-  log( url_args, 'console')
+#id: x.send_sms_signature_link
+#event: x.send_sms_signature_link
+#generic object: Individual
+#code: |
+#  log( 'send_sms_signature_link', 'console' )
+#  log( url_args, 'console')
+#---
+#id: x.send_email_signature_link
+#event: x.send_email_signature_link
+#generic object: Individual
+#code: |
+#  # Will need url arguments
+#  log( 'send_email_signature_link', 'console' )
+#  log( url_args, 'console')
 ---
 id: x.wants_to_change_device
 generic object: Individual
