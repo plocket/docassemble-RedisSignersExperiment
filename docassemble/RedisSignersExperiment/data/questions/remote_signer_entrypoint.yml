@@ -109,12 +109,6 @@ template: x.sms_device_template
 content:
   You have chosen to sign on this device, ${ x }. [Sign your document](${ device_choice_url }). ${ device_choice_url }
 ---
-#generic object: Individual
-#code: |
-#  #device_choice_url = interview_url_action( 'x.sign_on_device', device_id='tbd', action_key=action_key, party_id=x.id )
-#  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=x.id )
-#  #parent_interview_data_id=parent_interview_data_id,
----
 event: test
 code: |
   log( 'bleh', 'console' )
@@ -123,9 +117,12 @@ code: |
   log( action_arguments() )
 ---
 #generic object: DAObject
+#code: |
+#  #device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=x.id )
+#  #device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=signer.id )
+#  #parent_interview_data_id=parent_interview_data_id,
+---
 code: |
-  #device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=signer.id )
-  #device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=signer.id )
   device_choice_url = interview_url_action( 'test', device_id='tbd', action_key=action_key, party_id=signer.id )
   log(device_choice_url, 'console')
   #parent_interview_data_id=parent_interview_data_id,
