@@ -6,6 +6,9 @@ modules:
 include:
   - remote_sign_on_device.yml
 ---
+include:
+  - docassemble.MAVirtualCourt:basic-questions.yml
+---
 objects:
   - redis: DARedis
 ---
@@ -50,9 +53,31 @@ event: x.after_signature
 generic object: Individual
 code: |
   #set_redis_user_signature  # Must create `local_signers`. Could abstract it more, but it gets a little silly.
+  if device() and device().is_pc:
+    remote_signers_notified
+    after_remote_signers_notified
+  else:
+    if wants_to_finish_on_phone:
+      remote_signers_notified
+      after_remote_signers_notified
+    else:
+      phone_end
+---
+code: |
   for remote_signer in remote_signers:
     remote_signer.was_notified
-  after_remote_signers_notified
+  remote_signers_notified = True
+---
+id: ask wants to finish on phone
+question: |
+  Do you want to finish on your phone?
+yesno: wants_to_finish_on_phone
+---
+event: phone_end
+question: |
+  Thank you
+subquestion: |
+  You can finish on your original device.
 ---
 generic object: Individual
 code: |
@@ -124,16 +149,17 @@ content:
 ---
 generic object: Individual
 code: |
-  device_choice_url = interview_url_action( 'x.sign_on_device', device_id='tbd', action_key=action_key, party_id=x.id )
+  device_choice_url = interview_url_action( 'trigger_sign_on_device', device_id='tbd', action_key=action_key, party_id=x.id )
   #parent_interview_data_id=parent_interview_data_id,
   short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
+---
+event: trigger_sign_on_device
+code: |
+  users[0].sign_on_device
 ---
 ###################
 #  Customizable?/Should be customized
 ##################
----
-include:
-  - docassemble.MAVirtualCourt:basic-questions.yml
 ---
 objects:
   - all_signers: DAList.using(object_type=Individual, auto_gather=False)  # TODO: to plain list?
@@ -144,7 +170,7 @@ generic object: Individual
 template: x.sms_template
 content: |
   Dear ${ x },
-  ${ user } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
+  ${ users[0] } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
 ---
 id: email template multiuser
 generic object: Individual
@@ -152,7 +178,7 @@ template: x.email_template
 subject: Remote signature test
 content: |
   Dear ${ x },
-  ${ user } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
+  ${ users[0] } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
 ---
 generic object: Individual
 question: |

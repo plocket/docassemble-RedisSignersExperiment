@@ -7,6 +7,11 @@ include:
 objects:
   - redis: DARedis
   - signer: Individual
+  - signer.devices: DAList.using(object_type=DAObject, auto_gather=False, gathered=True, there_is_another=False)
+---
+mandatory: True
+code: |
+  multi_user = True
 ---
 # Currently getting here with the url in the console of the initial interview
 mandatory: True
@@ -15,39 +20,58 @@ code: |
 ---
 event: get_remote_signature
 code: |
+  #devices[0] = devices.appendObject()
+  log( 0.5 )
   data = None
-  if 'action_key' in url_args:
-    data = url_args
-  elif action_argument('action_key'):
+  if action_argument() and action_argument('action_key'):
     data = {
       #'parent_interview_data_id': action_argument('parent_interview_data_id'),
       'action_key': action_argument('action_key'),
       'party_id': action_argument('party_id')
     }
+    log( 1 )
+  elif 'action_key' in url_args:
+    log( 2 )
+    #log( url_args )
+    data = url_args
 
+  log( 3 )
+  log( action_arguments() )
+  log( action_argument('action_key') )
+  #log(device_choice_url, 'console')
+  #if foo > 1:
+  #  get_remote_signature = True
+  #foo += 1
   if data:
+    log( 4 )
     #parent_interview_data_id = data['parent_interview_data_id']
     action_key = data['action_key']
-
+    log( 5 )
     party = get_signer( data )
+    log( 6 )
     if party:
+      log( 7 )
       signer.id = data['party_id']
       signer.name.first = party[ 'name' ]
       signer.has_signed = party[ 'has_signed' ]
       was_willing = party[ 'willing_to_sign' ]
+      log( 8 )
 
       # Skip question if they've already signed or were already willing to sign.
       # Should `.has_signed` be handled here or passed on to `.sign_on_device` which already has to be set up to handle it?
       if signer.has_signed or was_willing is True or signer.willing_to_sign:
+        log( 9 )
         amend_signer( url_args, 'willing_to_sign', True )
         signer.sign_on_device
       else:
+        log( 10 )
         amend_signer( url_args, 'willing_to_sign', False )
         signer.after_unwilling_to_sign
 
   ## Untested
   #else:
   #  unauthorized
+  
 ---
 ###################
 #  Must be defined
@@ -74,16 +98,17 @@ code: |
 generic object: Individual
 template: x.sms_device_template
 content:
-  You have chosen to sign on this device, ${ x }. [Sign your document](${ short_device_choice_url }). ${ short_device_choice_url }
+  You have chosen to sign on this device, ${ x }. [Sign your document](${ device_choice_url }). ${ device_choice_url }
 ---
-generic object: Individual
+event: test
 code: |
-  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=x.id )
-  #parent_interview_data_id=parent_interview_data_id,
+  log( 'bleh', 'console' )
+  log( action_arguments(), 'console' )
+  log( 'bleh' )
+  log( action_arguments() )
 ---
-generic object: Individual
 code: |
-  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=x.id )
+  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=signer.id )
   #parent_interview_data_id=parent_interview_data_id,
   short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
 ---
