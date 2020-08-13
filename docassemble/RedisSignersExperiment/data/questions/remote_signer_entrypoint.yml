@@ -10,7 +10,7 @@ objects:
   - signer.devices: DAList.using(object_type=DAObject, auto_gather=False, gathered=True, there_is_another=False)
 ---
 # Currently getting here with the url in the console of the initial interview
-#mandatory: True
+mandatory: True
 code: |
   #log( 0 )
   #log( action_arguments() )
@@ -107,7 +107,7 @@ code: |
 generic object: Individual
 template: x.sms_device_template
 content:
-  You have chosen to sign on this device, ${ x }. [Sign your document](${ short_device_choice_url }). ${ device_choice_url }
+  You have chosen to sign on this device, ${ x }. [Sign your document](${ device_choice_url }). ${ device_choice_url }
 ---
 #generic object: Individual
 #code: |
@@ -128,7 +128,7 @@ code: |
   log(device_choice_url, 'console')
   #parent_interview_data_id=parent_interview_data_id,
   short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
-  log(short_device_choice_url, 'console')
+  #log(short_device_choice_url, 'console')
 ---
 modules:
   - docassemble.VirtualCourtToolbox.shortenURL
