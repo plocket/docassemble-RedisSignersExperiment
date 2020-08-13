@@ -119,6 +119,8 @@ event: test
 code: |
   log( 'bleh', 'console' )
   log( action_arguments(), 'console' )
+  log( 'bleh' )
+  log( action_arguments() )
 ---
 #generic object: DAObject
 code: |
