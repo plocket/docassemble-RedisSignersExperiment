@@ -25,17 +25,12 @@ code: |
   # which_device: atm really means 'wants to use any computer'
   # If not on computer or wants to sign on computer
   elif (device() and not device().is_pc) or x.which_device == 'this device':
-    check_check
     x.signature.set_attributes(persistent=True, private=False)
     x.after_signature
   else:
     x.mobile_number
     x.send_signature_link
     x.wait_for_signature
----
-question: |
-  Just checking
-continue button field: check_check
 ---
 event: x.wait_for_signature
 generic object: Individual

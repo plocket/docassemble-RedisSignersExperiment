@@ -265,7 +265,6 @@ code: |
   # Do we want persistance so that signers can see their document even after the user has exited the interview?
   signature_doc.set_attributes(persistent=True, private=False)
 
-  ## If authorization is implemented in interview, this must come after users[0] is defined. Very fragile.
   action_key # var name? legal_action? with same people. one form...
 
   set_initial_redis_data

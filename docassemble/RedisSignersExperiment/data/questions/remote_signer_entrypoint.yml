@@ -32,7 +32,6 @@ code: |
     log( 1 )
   elif 'action_key' in url_args:
     log( 2 )
-    #log( url_args )
     data = url_args
 
   log( 3 )
@@ -123,7 +122,16 @@ id: x.after_signature_saved
 event: x.after_signature_saved
 generic object: Individual
 code: |
-  x.status
+  x.end
+  #x.status
+---
+id: remote signer end
+generic object: Individual
+event: x.end
+question: |
+  Thank you
+subquestion: |
+  You have signed ${ redis.get_data( url_args['action_key'] )['user_names'] }'s document. They will get your signature soon.
 ---
 # Doc is `None` when we try to use signatures
 id: signature status
