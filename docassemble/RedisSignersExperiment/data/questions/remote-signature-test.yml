@@ -16,76 +16,35 @@ code: |
   action_key = get_random_chars()
 ---
 code: |
+  if not defined('all_signers'):
+    all_signers = users  # Assumes use of MAVirtualCourts
+
   # Have to abstract so devs can create/use their own docs and text effectively?
-  # Create `action_data` elsewhere, as shown below
-  action_data #= { 'user_names': users[0].id, 'signed_doc': signature_doc, } #'preview': signature_doc
+  # Create `interview_data` elsewhere, as shown below
+  interview_data #= { 'user_names': users[0].id, 'signed_doc': signature_doc, } #'preview': signature_doc
   
   parties = {}
   for signer in all_signers:
     parties[ signer.id ] = {
       "has_signed": False, "willing_to_sign": None, "name": str( signer )
     }
-  action_data[ 'parties' ] = parties
+  interview_data[ 'parties' ] = parties
   
-  redis.set_data( action_key, action_data, expire=remote_siganure_expiration_ms )
+  redis.set_data( action_key, interview_data, expire=remote_siganure_expiration_ms )
   set_initial_redis_data = True
----
-# TODO: Figure out another way to show signed document to remote users
-#code: |
-#  #if not defined( 'local_signers' ):
-#  #  local_signers = users[0]  # ?
-#
-#  # So others can see it on their own interviews
-#  # There must be a better way. Also, this doesn't work.
-#  # Maybe this doesn't need to be done...?
-#  # Does it need to be done for all_signatures to be recomputed?
-#  for local_signer in local_signers:
-#    local_signer.signature.set_attributes(persistent=True, private=False)
-#    signer_obj = action_data[ 'parties' ][ local_signer.id ]
-#    signer_obj[ 'signature' ] = users[0].signature
-#    signer_obj[ 'signature_date' ] = today()
-#    signer_obj[ 'has_signed' ] = True
-#
-#  redis.set_data( action_key, action_data )
-#  set_redis_user_signature = True
----
-event: x.after_signature
-generic object: Individual
-code: |
-  #set_redis_user_signature  # Must create `local_signers`. Could abstract it more, but it gets a little silly.
-  if device() and device().is_pc:
-    remote_signers_notified
-    after_remote_signers_notified
-  else:
-    if wants_to_finish_on_phone:
-      remote_signers_notified
-      after_remote_signers_notified
-    else:
-      phone_end
 ---
 code: |
   for remote_signer in remote_signers:
-    remote_signer.was_notified
-  remote_signers_notified = True
----
-id: ask wants to finish on phone
-question: |
-  Do you want to finish on your phone?
-yesno: wants_to_finish_on_phone
----
-event: phone_end
-question: |
-  Thank you
-subquestion: |
-  You can finish on your original device.
+    remote_signer.notify
+  notify_remote_signers = True
 ---
 generic object: Individual
 code: |
   if x.send_method == 'text': 
-    x.message_result = send_sms(task='send link to remote signer', to=x.mobile_number, template=x.sms_template)
+    x.message_result = send_sms(task='send sms_template', to=x.mobile_number, template=x.sms_template)
   else:
     x.message_result = send_email(to=x, template=x.email_template)
-  x.was_notified = True
+  x.notify = True
 ---
 generic object: Individual
 code: |
@@ -93,12 +52,12 @@ code: |
     action_key = action_key,
     party_id = x.id,
     new_session = '1',
-    i=remote_signer_url_end
+    i=remote_signer_url_end  # The url the co-signer will go to
   )
 
   x.signature_url = shortenMe( x.signature_url_string ).shortenedURL
 ---
-event: get_current_signatures
+event: get_stored_signatures
 # Updates user doc with remote signatures
 code: |
   new_data = redis.get_data( action_key )
@@ -115,6 +74,11 @@ code: |
         signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
         signer.signature = signing_parties[ signer.id ][ 'signature' ]
 ---
+# Makes sure `has_signed` is always at least defined
+generic object: Individual
+code: |
+  x.has_signed = False
+---
 generic object: Individual
 code: |
   x.id = get_random_chars()
@@ -130,7 +94,7 @@ code: |
 ##################
 ---
 code: |
-  action_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
+  interview_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
 ---
 code: |
   remote_signer_url_end = 'docassemble.playground12multisignatureRedisIndividual:remote_signer_entrypoint.yml'
@@ -141,8 +105,10 @@ code: |
 ---
 comment: |
   Other required stuff:
-  all_signers
-  use: set_initial_redis_data
+  create:
+    all_signers
+  use:
+    set_initial_redis_data
 ---
 ###################
 #  Defaults: Should be customized
@@ -151,25 +117,46 @@ comment: |
 code: |
   remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
 ---
+event: x.after_signature
+generic object: Individual
+code: |
+  #set_redis_user_signature  # Must create `local_signers`. Could abstract it more, but it gets a little silly.
+  if device() and device().is_pc:
+    notify_remote_signers
+    after_remote_signers_notified
+  else:
+    if wants_to_finish_on_phone:
+      notify_remote_signers
+      after_remote_signers_notified
+    else:
+      phone_end
+---
+id: ask wants to finish on phone
+question: |
+  Do you want to finish on your phone?
+yesno: wants_to_finish_on_phone
+---
+event: phone_end
+question: |
+  Thank you
+subquestion: |
+  You can finish on your original device.
+---
 event: after_remote_signers_notified
 code: |
   users[0].status
 ---
-# TODO: Test this URL! Somehow we didn't!
+# For sending the user to the device choice screen and getting their signature
 generic object: Individual
 template: x.sms_device_template
 content: |
-  You have chosen to sign on this device, ${ x }. [Sign your document here](${ short_device_choice_url }). ${ short_device_choice_url }.
+  You have chosen to sign on this device, ${ x }. Go to ${ short_device_choice_url } to sign your document.
 ---
 generic object: Individual
 code: |
   device_choice_url = interview_url_action( 'trigger_sign_on_device', device_id='tbd', action_key=action_key, party_id=x.id )
   #parent_interview_data_id=parent_interview_data_id,
   short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
----
-objects:
-  - all_signers: DAList.using(object_type=Individual, auto_gather=False)  # TODO: to plain list? Needed at all?
-  - others: DAList.using(object_type=Individual, auto_gather=False)
 ---
 id: sms template multiuser
 generic object: Individual
@@ -198,20 +185,6 @@ question: |
   ${x}'s signature
 signature: x.signature
 ---
-id: document
-event: x.status
-reconsider:
-  - get_current_signatures
-  - signature_doc
-generic object: Individual
-#prevent going back: True
-question: |
-  Test document signatures for ${ users[0] }
-subquestion: |
-  ${ signature_doc }
-  
-  ${ action_button_html('javascript:daShowSpinner();daRefreshSubmit()', label='Check again <i class="fas fa-sync-alt"></i>', size='lg') }
----
 id: how to send to remote signer
 generic object: Individual
 question: |
@@ -229,6 +202,20 @@ fields:
     js show if: |
       val("x.send_method") == "text"
 ---
+id: document
+event: x.status
+reconsider:
+  - get_stored_signatures
+  - signature_doc
+generic object: Individual
+#prevent going back: True
+question: |
+  Test document signatures for ${ users[0] }
+subquestion: |
+  ${ signature_doc }
+  
+  ${ action_button_html('javascript:daShowSpinner();daRefreshSubmit()', label='Check again <i class="fas fa-sync-alt"></i>', size='lg') }
+---
 attachment:
   name: Signatures doc
   variable name: signature_doc
@@ -237,6 +224,11 @@ attachment:
   #persistent: True
   #private: False
 ---
+objects:
+  - all_signers: DAList.using(object_type=Individual, auto_gather=False)  # TODO: to plain list? Needed at all?
+  - others: DAList.using(object_type=Individual, auto_gather=False)
+---
+id: interview order
 mandatory: True
 code: |
   # Save data to redis
@@ -274,9 +266,6 @@ code: |
   action_key # var name? legal_action? with same people. one form...
 
   set_initial_redis_data
-  
-  #log( others[0].signature_url, 'console' )
-  #log( others[1].signature_url, 'console' )
   
   users[0].willing_to_sign = True  # Can probably get rid of this. Not in flow anymore.
   users[0].sign_on_device
