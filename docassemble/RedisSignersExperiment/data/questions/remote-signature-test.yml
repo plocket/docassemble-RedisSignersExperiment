@@ -225,7 +225,6 @@ attachment:
   #private: False
 ---
 objects:
-  - all_signers: DAList.using(object_type=Individual, auto_gather=False)  # TODO: to plain list? Needed at all?
   - others: DAList.using(object_type=Individual, auto_gather=False)
 ---
 id: interview order
@@ -240,22 +239,17 @@ code: |
   # url_args needed: action_key, party_id, user_id
 
   users[0].name.first
-  users[0].has_signed = False
   users.gathered = True
   users.there_is_another = False
   local_signers = users
 
   others[0].name.first
-  others[0].has_signed = False
   others[1].name.first
-  others[1].has_signed = False
   others.gathered = True
   others.there_is_another = False
   remote_signers = [ others[0], others[1] ]
 
   all_signers = users + others
-  all_signers.gathered = True
-  all_signers.there_is_another = False
 
   ## TODO: Discuss - This sort of looks like there's only one user per interview, so maybe we don't need a list of users.
 
@@ -266,6 +260,4 @@ code: |
   action_key # var name? legal_action? with same people. one form...
 
   set_initial_redis_data
-  
-  users[0].willing_to_sign = True  # Can probably get rid of this. Not in flow anymore.
   users[0].sign_on_device
