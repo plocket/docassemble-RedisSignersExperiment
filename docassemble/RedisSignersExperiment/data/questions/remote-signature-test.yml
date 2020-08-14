@@ -125,26 +125,40 @@ code: |
   def get_random_chars(num_chars=10):
     return ''.join(random.choice(string.ascii_lowercase) for i in range(10))
 ---
-###################
-#  Must be defined
 ##################
----
-event: after_remote_signers_notified
-code: |
-  users[0].status
+#  Must be re-defined by developer
+##################
 ---
 code: |
   action_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
 ---
 code: |
-  remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
+  remote_signer_url_end = 'docassemble.playground12multisignatureRedisIndividual:remote_signer_entrypoint.yml'
+---
+event: trigger_sign_on_device
+code: |
+  users[0].sign_on_device
+---
+comment: |
+  Other required stuff:
+  all_signers
+  use: set_initial_redis_data
+---
+###################
+#  Defaults: Should be customized
+##################
 ---
 code: |
-  remote_signer_url_end = 'docassemble.playground12MultiSignatureRedis:remote_signer_entrypoint.yml'
+  remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
 ---
+event: after_remote_signers_notified
+code: |
+  users[0].status
+---
+# TODO: Test this URL! Somehow we didn't!
 generic object: Individual
 template: x.sms_device_template
-content:
+content: |
   You have chosen to sign on this device, ${ x }. [Sign your document here](${ short_device_choice_url }). ${ short_device_choice_url }.
 ---
 generic object: Individual
@@ -153,16 +167,8 @@ code: |
   #parent_interview_data_id=parent_interview_data_id,
   short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
 ---
-event: trigger_sign_on_device
-code: |
-  users[0].sign_on_device
----
-###################
-#  Customizable?/Should be customized
-##################
----
 objects:
-  - all_signers: DAList.using(object_type=Individual, auto_gather=False)  # TODO: to plain list?
+  - all_signers: DAList.using(object_type=Individual, auto_gather=False)  # TODO: to plain list? Needed at all?
   - others: DAList.using(object_type=Individual, auto_gather=False)
 ---
 id: sms template multiuser
