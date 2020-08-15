@@ -118,9 +118,6 @@ question: |
 subquestion: |
   You can finish on your original device.
 ---
-objects:
-  - others: DAList.using(object_type=Individual, auto_gather=False)
----
 id: how to send to remote signer
 generic object: Individual
 question: |
@@ -137,6 +134,13 @@ fields:
   - What is their phone number?: x.mobile_number
     js show if: |
       val("x.send_method") == "text"
+---
+id: number to text
+generic object: Individual
+question: |
+  What number should we text?
+fields:
+  - no label: x.mobile_number
 ---
 id: sms template multiuser
 generic object: Individual
@@ -213,6 +217,10 @@ attachment:
   docx template file: test-signatures.docx
   #persistent: True
   #private: False
+---
+objects:
+  - users: DAList.using(object_type=Individual, auto_gather=False)
+  - others: DAList.using(object_type=Individual, auto_gather=False)
 ---
 mandatory: True
 code: |

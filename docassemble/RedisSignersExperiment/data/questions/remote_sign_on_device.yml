@@ -39,6 +39,9 @@ code: |
     # Reset and start over again
     undefine( x.instanceName + '.which_device' )
     undefine( x.instanceName + '.send_method' )
+    # TODO: Change this to device number
+    undefine( x.instanceName + '.mobile_number' )
+    undefine( x.instanceName + '.send_signature_link' )
     undefine( x.instanceName + '.wants_to_change_device' )
     x.sign_on_device
   else:
