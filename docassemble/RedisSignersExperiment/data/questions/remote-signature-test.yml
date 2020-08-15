@@ -39,7 +39,6 @@ code: |
     x.message_result = send_email(to=x, template=x.email_template)
   x.was_notified = True
 ---
-event: get_stored_signatures
 # Updates user doc with remote signatures
 code: |
   new_data = redis.get_data( action_key )
@@ -50,6 +49,8 @@ code: |
       if signing_parties[ signer.id ][ 'has_signed' ]:
         signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
         signer.signature = signing_parties[ signer.id ][ 'signature' ]
+
+  get_stored_signatures = True
 ---
 generic object: Individual
 code: |
@@ -203,6 +204,7 @@ code: |
 ---
 id: document
 event: x.status
+# Problem - developer _needs_ to reconsider `get_stored_signatures`
 reconsider:
   - get_stored_signatures
   - signature_doc
@@ -256,10 +258,10 @@ code: |
 
   # https://docassemble.org/docs/objects.html#DAFile.set_attributes
   # Do we want persistance so that signers can see their document even after the user has exited the interview?
+  # Developer: Do this before setting redis data
   signature_doc.set_attributes(persistent=True, private=False)
 
   action_key # var name? legal_action? with same people. one form...
-
   set_initial_redis_data
   
   users[0].sign_on_device
