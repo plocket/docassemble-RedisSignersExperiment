@@ -1,4 +1,11 @@
 ---
+comment: |
+  Some pre-made functionality for mutli-user signatures.
+
+  `remote` in here refers to devices of signers other than the user or those using the user's device.
+  
+  As usual, these can all be customized. It just hopes these help save brain cells.
+---
 # Make own function to make this more independent?
 modules:
   - docassemble.VirtualCourtToolbox.shortenURL
@@ -59,13 +66,13 @@ code: |
 ---
 generic object: Individual
 code: |
-  # Can remove `x.` from this first var
-  x.remote_signature_url = interview_url(
+  url_str = interview_url(
     action_key = action_key,
     party_id = x.id,
     new_session = '1',
     i=remote_signer_url_end  # The url the co-signer will go to
   )
+  x.cosigner_url = shortenMe( url_str ).shortenedURL
 ---
 # Makes sure `has_signed` is always at least defined
 generic object: Individual
@@ -99,9 +106,10 @@ code: |
   remote_signer_url_end = user_info().package + ':remote_signer_entrypoint.yml'
 ---
 ###################
-#  Customizable?/Should be customized
+#  Pretty opinionated
 ##################
 ---
+# After the user signs, the links for the co-signers get sent
 event: x.after_signature
 generic object: Individual
 code: |
@@ -119,6 +127,10 @@ code: |
   for remote_signer in remote_signers:
     remote_signer.was_notified  # Send message
   notify_remote_signers = True
+---
+###################
+#  Customizable?/Should be customized
+##################
 ---
 id: ask wants to finish on phone
 question: |
@@ -160,11 +172,7 @@ generic object: Individual
 template: x.sms_template
 content: |
   Dear ${ x },
-  ${ users[0] } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
----
-generic object: Individual
-code: |
-  x.signature_url = shortenMe( x.remote_signature_url ).shortenedURL
+  ${ users[0] } is asking you to sign a document. Go to ${ x.cosigner_url } to sign the document.
 ---
 id: email template multiuser
 generic object: Individual
@@ -172,7 +180,7 @@ template: x.email_template
 subject: Remote signature test
 content: |
   Dear ${ x },
-  ${ users[0] } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
+  ${ users[0] } is asking you to sign a document. Go to ${ x.cosigner_url } to sign the document.
 ---
 generic object: Individual
 template: x.sms_device_template
@@ -183,11 +191,13 @@ content:
 ---
 generic object: Individual
 code: |
-  long_device_choice_url = interview_url_action( 'trigger_sign_on_device', device_id='tbd', action_key=action_key, party_id=x.id )
+  # `action` experiments for true device choice begin here
+  long_device_choice_url = interview_url_action( 'signature_with_device_choice', device_id='tbd', action_key=action_key, party_id=x.id )
   #parent_interview_data_id=parent_interview_data_id,
   device_choice_url = shortenMe( long_device_choice_url ).shortenedURL
 ---
-event: trigger_sign_on_device
+# Entrypoint for other device chosen for signature
+event: signature_with_device_choice
 code: |
   users[0].sign_on_device
 ---
@@ -205,6 +215,8 @@ signature: x.signature
 ---
 event: after_remote_signers_notified
 code: |
+  # Request other signatures under here
+  # Possibly using action arguments when that's worked out
   users[0].status
 ---
 id: document
