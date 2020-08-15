@@ -1,149 +1,259 @@
+---
+# Make own function to make this more independent?
 modules:
-  - .signing_party
+  - docassemble.VirtualCourtToolbox.shortenURL
 ---
 include:
   - remote_sign_on_device.yml
 ---
+include:
+  - docassemble.MAVirtualCourt:basic-questions.yml
+---
 objects:
   - redis: DARedis
-  - signer: Individual
-  - signer.devices: DAList.using(object_type=DAObject, auto_gather=False, gathered=True, there_is_another=False)
 ---
-mandatory: True
 code: |
-  multi_user = True
+  action_key = get_random_chars()
 ---
-# Currently getting here with the url in the console of the initial interview
-mandatory: True
 code: |
-  get_remote_signature
----
-event: get_remote_signature
-code: |
-  #devices[0] = devices.appendObject()
-  data = None
-  if action_argument() and action_argument('action_key'):
-    data = {
-      #'parent_interview_data_id': action_argument('parent_interview_data_id'),
-      'action_key': action_argument('action_key'),
-      'party_id': action_argument('party_id')
-    }
-  elif 'action_key' in url_args:
-    data = url_args
+  if not defined('all_signers'):
+    all_signers = users  # Assumes use of MAVirtualCourts
 
-  if data:
-    #parent_interview_data_id = data['parent_interview_data_id']
-    action_key = data['action_key']
-    party = get_signer( data )
-    if party:
-      signer.id = data['party_id']
-      signer.name.first = party[ 'name' ]
-      signer.has_signed = party[ 'has_signed' ]
-      was_willing = party[ 'willing_to_sign' ]
-
-      # Skip question if they've already signed or were already willing to sign.
-      # Should `.has_signed` be handled here or passed on to `.sign_on_device` which already has to be set up to handle it?
-      if signer.has_signed or was_willing is True or signer.willing_to_sign:
-        amend_signer( url_args, 'willing_to_sign', True )
-        signer.sign_on_device
-      else:
-        amend_signer( url_args, 'willing_to_sign', False )
-        signer.after_unwilling_to_sign
-
-  ## Untested
-  #else:
-  #  unauthorized
+  # Have to abstract so devs can create/use their own docs and text effectively?
+  # Create `custom_interview_redis_data` elsewhere, as shown in section below
+  custom_interview_redis_data #= { 'user_names': users[0].id, 'signed_doc': signature_doc, } #'preview': signature_doc
   
+  # These aren't the real objects. This is just the data we need from them
+  parties = {}
+  for signer in all_signers:
+    parties[ signer.id ] = {
+      "has_signed": False, "willing_to_sign": None, "name": str( signer )
+    }
+  custom_interview_redis_data[ 'parties' ] = parties
+  
+  redis.set_data( action_key, custom_interview_redis_data, expire=remote_siganure_expiration_ms )
+  set_initial_redis_data = True
 ---
-###################
-#  Must be defined
+code: |
+  for remote_signer in remote_signers:
+    remote_signer.notify
+  notify_remote_signers = True
+---
+generic object: Individual
+code: |
+  if x.send_method == 'text': 
+    x.message_result = send_sms(task='send sms_template', to=x.mobile_number, template=x.sms_template)
+  else:
+    x.message_result = send_email(to=x, template=x.email_template)
+  x.notify = True
+---
+generic object: Individual
+code: |
+  x.signature_url_string = interview_url(
+    action_key = action_key,
+    party_id = x.id,
+    new_session = '1',
+    i=remote_signer_url_end  # The url the co-signer will go to
+  )
+
+  x.signature_url = shortenMe( x.signature_url_string ).shortenedURL
+---
+event: get_stored_signatures
+# Updates user doc with remote signatures
+code: |
+  new_data = redis.get_data( action_key )
+  signing_parties = new_data[ 'parties' ]
+  for signer in all_signers:
+    if signer.id in signing_parties:
+      # TODO: Test this thoroughly
+      if signing_parties[ signer.id ][ 'has_signed' ]:
+        signer.has_signed = signing_parties[ signer.id ][ 'has_signed' ]
+        signer.signature = signing_parties[ signer.id ][ 'signature' ]
+---
+# Makes sure `has_signed` is always at least defined
+generic object: Individual
+code: |
+  x.has_signed = False
+---
+generic object: Individual
+code: |
+  x.id = get_random_chars()
+---
+code: |
+  import random
+  import string
+  def get_random_chars(num_chars=10):
+    return ''.join(random.choice(string.ascii_lowercase) for i in range(10))
+---
+##################
+#  Must be re-defined by developer
 ##################
 ---
-id: x.after_signature
+code: |
+  # Whatever info you want the remote signers to be able to get
+  custom_interview_redis_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
+---
+code: |
+  remote_signer_url_end = 'docassemble.playground12multisignatureRedisIndividual:remote_signer_entrypoint.yml'
+---
+event: trigger_sign_on_device
+code: |
+  users[0].sign_on_device
+---
+comment: |
+  Other required stuff:
+  create:
+    all_signers
+  use:
+    set_initial_redis_data
+---
+###################
+#  Defaults: Should be customized
+##################
+---
+code: |
+  remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
+---
 event: x.after_signature
 generic object: Individual
 code: |
-  if not x.has_signed:
-    amend_signer( url_args, 'signature', x.signature )
-    amend_signer( url_args, 'signature_date', today()  )
-    amend_signer( url_args, 'has_signed', True )
-
-  x.after_signature_saved
+  if device() and device().is_pc:
+    notify_remote_signers
+    after_remote_signers_notified
+  else:
+    if wants_to_finish_on_phone:
+      notify_remote_signers
+      after_remote_signers_notified
+    else:
+      phone_end
 ---
-id: x.after_unwilling_to_sign
-event: x.after_unwilling_to_sign
-generic object: Individual
-code: |
-  amend_signer( url_args, 'willing_to_sign', False )
-  x.after_unwilling_to_sign_saved
+id: ask wants to finish on phone
+question: |
+  Do you want to finish on your phone?
+yesno: wants_to_finish_on_phone
 ---
-generic object: Individual
-template: x.sms_device_template
-content:
-  You have chosen to sign on this device, ${ x }. [Sign your document](${ device_choice_url }). ${ device_choice_url }
----
-code: |
-  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=signer.id )
-  #parent_interview_data_id=parent_interview_data_id,
-  short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
----
-modules:
-  - docassemble.VirtualCourtToolbox.shortenURL
----
-###################
-#  Customizable?/Should be customized
-##################
----
-id: x.after_signature_saved
-event: x.after_signature_saved
-generic object: Individual
-code: |
-  x.end
-  #x.status
----
-id: remote signer end
-generic object: Individual
-event: x.end
+event: phone_end
 question: |
   Thank you
 subquestion: |
-  You have signed ${ redis.get_data( url_args['action_key'] )['user_names'] }'s document. They will get your signature soon.
+  You can finish on your original device.
 ---
-# Doc is `None` when we try to use signatures
-id: signature status
-event: x.status
-generic object: Individual
-prevent going back: True
-question: |
-  Signature status for ${ x }
-subquestion: |
-  ${ redis.get_data( url_args['action_key'] )['user_names'] }'s document.
-  
-  ${ redis.get_data( url_args['action_key'] )[ 'signed_doc' ] }
+event: after_remote_signers_notified
+code: |
+  users[0].status
 ---
-id: signature
+# For sending the user to the device choice screen and getting their signature
+generic object: Individual
+template: x.sms_device_template
+content: |
+  You have chosen to sign on this device, ${ x }. Go to ${ short_device_choice_url } to sign your document.
+---
+generic object: Individual
+code: |
+  device_choice_url = interview_url_action( 'trigger_sign_on_device', device_id='tbd', action_key=action_key, party_id=x.id )
+  #parent_interview_data_id=parent_interview_data_id,
+  short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
+---
+id: sms template multiuser
+generic object: Individual
+template: x.sms_template
+content: |
+  Dear ${ x },
+  ${ users[0] } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
+---
+id: email template multiuser
+generic object: Individual
+template: x.email_template
+subject: Remote signature test
+content: |
+  Dear ${ x },
+  ${ users[0] } is asking you to sign a document. Go to ${ x.signature_url } to sign the document.
+---
 generic object: Individual
 question: |
-  Signature ${ x }
+  Name
+fields:
+  - First: x.name.first
+---
+id: x.signature
+generic object: Individual
+question: |
+  ${x}'s signature
 signature: x.signature
 ---
-id: unwilling to sign end
-generic object: Individual
-event: x.after_unwilling_to_sign_saved
-question: |
-  Thank you and goodbye
-buttons:
-  - Exit: exit
----
-id: unauthorized
-event: unauthorized
-question: |
-  Thank you and goodbye
-buttons:
-  - Exit: exit
----
-id: x.willing_to_sign
+id: how to send to remote signer
 generic object: Individual
 question: |
-  Are you willing to sign this document?
-yesno: x.willing_to_sign
+  Do you want to send this to ${ x } by email or text?
+fields:
+  - no label: x.send_method
+    datatype: radio
+    choices:
+      - Email: email
+      - Text: text
+  - What is their email?: x.email
+    js show if: |
+      val("x.send_method") == "email"
+  - What is their phone number?: x.mobile_number
+    js show if: |
+      val("x.send_method") == "text"
+---
+id: document
+event: x.status
+reconsider:
+  - get_stored_signatures
+  - signature_doc
+generic object: Individual
+#prevent going back: True
+question: |
+  Test document signatures for ${ users[0] }
+subquestion: |
+  ${ signature_doc }
+  
+  ${ action_button_html('javascript:daShowSpinner();daRefreshSubmit()', label='Check again <i class="fas fa-sync-alt"></i>', size='lg') }
+---
+attachment:
+  name: Signatures doc
+  variable name: signature_doc
+  filename: signatures
+  docx template file: test-signatures.docx
+  #persistent: True
+  #private: False
+---
+objects:
+  - others: DAList.using(object_type=Individual, auto_gather=False)
+---
+id: interview order
+mandatory: True
+code: |
+  # Save data to redis
+  # action_key (unique to this legal action), user_name, party_id
+  # Send link generated by something. The remote interview entrypoint?
+  # Start the remote entrypoint. Has a mandatory block.
+  # Remote entrypoint uses remote_sign_on_device.yml to get signature. Can customize questions and data.
+  # redist.set_data( 'action_key', { parties: {}, preview: doc, }, expire=3)
+  # url_args needed: action_key, party_id, user_id
+
+  users[0].name.first
+  users.gathered = True
+  users.there_is_another = False
+  local_signers = users
+
+  others[0].name.first
+  others[1].name.first
+  others.gathered = True
+  others.there_is_another = False
+  remote_signers = [ others[0], others[1] ]
+
+  all_signers = users + others
+
+  ## TODO: Discuss - This sort of looks like there's only one user per interview, so maybe we don't need a list of users.
+
+  # https://docassemble.org/docs/objects.html#DAFile.set_attributes
+  # Do we want persistance so that signers can see their document even after the user has exited the interview?
+  signature_doc.set_attributes(persistent=True, private=False)
+
+  action_key # var name? legal_action? with same people. one form...
+
+  set_initial_redis_data
+  users[0].sign_on_device
