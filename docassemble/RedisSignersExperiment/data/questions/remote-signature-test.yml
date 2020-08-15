@@ -14,12 +14,17 @@ code: |
   multi_user = True
 ---
 code: |
+  action_key
+
+  # DEVELOPER: Assumes list of users
   if not defined('all_signers'):
-    all_signers = users  # Assumes use of MAVirtualCourts
+    all_signers = users
 
   # Have to abstract so devs can create/use their own docs and text effectively?
-  # Create `action_data` elsewhere, as shown below
-  action_data = custom_interview_redis_data
+  # DEVELOPERS: Create `action_data` elsewhere, as shown below
+  action_data = {}
+  if defined('custom_interview_redis_data'):
+    action_data = custom_interview_redis_data
   
   parties = {}
   for signer in all_signers:
@@ -260,8 +265,7 @@ code: |
   # Do we want persistance so that signers can see their document even after the user has exited the interview?
   # Developer: Do this before setting redis data
   signature_doc.set_attributes(persistent=True, private=False)
-
-  action_key # var name? legal_action? with same people. one form...
+  custom_interview_redis_data
   set_initial_redis_data
   
   users[0].sign_on_device
