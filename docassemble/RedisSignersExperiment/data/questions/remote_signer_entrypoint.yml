@@ -5,7 +5,7 @@ comment: |
   `remote` in here refers to devices of signers other than the user or those using the user's device.
   
   ## Limitations:
-  - Remote users never see the doc update (not MVP) (multiuser da example may have some clues)
+  - Remote users never see the doc update (not MVP)
   
   As usual, these can all be customized. It just hopes these help save brain cells.
 ---
@@ -18,7 +18,7 @@ include:
 objects:
   - redis: DARedis
   - signer: Individual
-  - signer.devices: DAList.using(object_type=DAObject, auto_gather=False, gathered=True, there_is_another=False)
+  #- signer.devices: DAList.using(object_type=DAObject, auto_gather=False, gathered=True, there_is_another=False)  # For adding devices with actions
 ---
 mandatory: True
 code: |
@@ -63,7 +63,6 @@ code: |
   ## Untested
   #else:
   #  unauthorized
-  
 ---
 id: x.after_signature
 event: x.after_signature
@@ -91,7 +90,7 @@ modules:
   - docassemble.VirtualCourtToolbox.shortenURL
 ---
 ###################
-#  Interfaces directly with remote signer code
+# Interfacing directly with remote signer code
 ##################
 ---
 id: x.after_signature_saved
@@ -101,12 +100,20 @@ code: |
   x.end
   #x.status
 ---
+id: x.after_unwilling_to_sign_saved
+event: x.after_unwilling_to_sign_saved
+generic object: Individual
+code: |
+  x.unwilling_to_sign_end
+  #x.status
+---
 ###################
-#  Interfaces directly with script for user choosing other device to sign on
+# Interfacing directly with script for user choosing other device to sign on
 ##################
 ---
 generic object: Individual
 code: |
+  # TODO: Should this be in sign_on_device.yml?
   # TODO: Send with action arguments (in templates)
   #if x.send_method == 'text':
   #  x.send_sms_signature_link
@@ -128,7 +135,7 @@ question: |
 signature: x.signature
 ---
 ###################
-#  Questions interacting with device signature code
+# Questions interacting with the above
 ##################
 ---
 generic object: Individual
@@ -144,7 +151,7 @@ question: |
 subquestion: |
   You have signed ${ redis.get_data( url_args['interview_data_id'] )['user_names'] }'s document. They will get your signature soon.
 ---
-# Should show signed doc with status. Not updating.
+# Inactive. Should show signed doc with status, but not updating.
 id: signature status
 event: x.status
 generic object: Individual
@@ -158,7 +165,7 @@ subquestion: |
 ---
 id: unwilling to sign end
 generic object: Individual
-event: x.after_unwilling_to_sign_saved
+event: x.unwilling_to_sign_end
 question: |
   Thank you and goodbye
 buttons:
