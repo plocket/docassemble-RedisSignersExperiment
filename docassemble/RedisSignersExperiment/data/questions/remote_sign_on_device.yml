@@ -1,32 +1,25 @@
 comment: |
-  A flow for allowing non-user signers to sign on the device with which they are most comfortable.
+  A flow for allowing signers to sign on the device with which they are most comfortable.
 
   `generic object` is being used to allow more flexibility for developers using this module.
   
-  Limitations:
+  ## Limitations:
   - Devices don't prevent each other from signing. TODO: Try sending action arguments with every keypress and... something and checking action arguments in every block. Not sure that's possible.
   - Right now the signer can't pick any device they want. It only differentiates between using a computer and a mobile device. A mobile device will always only present a signature. The execution order for handling multiple devices is complex unless it's broken into multiple interviews.
----
-objects:
-  - redis: DARedis
----
-modules:
-  - .signing_party
----
-# TODO: Try using action arguments for all devices
 
-# This was going to be flexible enough to use in any interview
-# but I'm not sure now. Maybe an action argument would be good.
+  TODO: Use action arguments for every question to identify/verify devices
+---
 event: x.sign_on_device
 generic object: Individual
+# Cannot be triggered by an action (because of generic object)
 code: |
-  # current bugs
-  # - Remote users never see the doc update (not MVP) (multiuser da example may have some clues)
-  x.has_signed = False  # False to start
+  
+  if x.has_signed:
+    x.after_signature
 
   # which_device: atm really means 'wants to use any computer'
   # If not on computer or wants to sign on computer
-  if (device() and not device().is_pc) or x.which_device == 'this device':
+  elif (device() and not device().is_pc) or x.which_device == 'this device':
     x.signature.set_attributes(persistent=True, private=False)
     x.after_signature
   else:
@@ -41,14 +34,22 @@ code: |
     # Reset and start over again
     undefine( x.instanceName + '.which_device' )
     undefine( x.instanceName + '.send_method' )
+    # TODO: Change this to device_number
+    undefine( x.instanceName + '.mobile_number' )
+    undefine( x.instanceName + '.send_signature_link' )
     undefine( x.instanceName + '.wants_to_change_device' )
     x.sign_on_device
+
+  # If wants to change device again
   else:
+    # If they've already signed, just move on?
+    # TODO: Do we want them to be able to choose to re-sign?
     if defined( x.instanceName + '.signature' ):
       x.after_signature
+
+    # Otherwise, let them change the device they want to use
     else:
-      # Allow changing of waiting page text
-      x.said_had_signed_on_other_device = True
+      x.said_had_signed_on_other_device = True  # For custom waiting screen text
       undefine( x.instanceName + '.wants_to_change_device' )
       x.wait_for_signature
 ---
@@ -57,23 +58,19 @@ generic object: Individual
 code: |
   x.said_had_signed_on_other_device = False
 ---
+# Fallback
 generic object: Individual
 code: |
   x.has_signed = False
 ---
-generic object: Individual
-code: |
-  # TODO: Send with action arguments
-  #if x.send_method == 'text':
-  #  x.send_sms_signature_link
-  #elif x.send_method == 'email':  # Not implemented for MVP
-  #  x.send_email_signature_link
-  x.send_signature_link = True
+###################
+#  Interfaces directly with choosing another device
+##################
 ---
 id: x.willing_to_sign
 generic object: Individual
 question: |
-  x.willing_to_sign
+  Are you willing to sign this document?
 yesno: x.willing_to_sign
 ---
 id: x.end_with_unwilling_to_sign
@@ -115,6 +112,10 @@ generic object: Individual
 code: |
   x.status
 ---
+###################
+#  Questions triggered by above code interfacing code
+##################
+---
 id: x.status
 event: x.status
 generic object: Individual
@@ -127,29 +128,16 @@ generic object: Individual
 question: |
   Send this to your mobile device
 subquestion: |
-  You can use a QR code that will be here or you can text your mobile device.
+  You can use a QR code that could be here or you can text your mobile device.
 fields:
   - Number to text: x.mobile_number
----
-id: x.send_sms_signature_link
-event: x.send_sms_signature_link
-generic object: Individual
-code: |
-  log( 'send_sms_signature_link', 'console' )
-  log( url_args, 'console')
----
-id: x.send_email_signature_link
-event: x.send_email_signature_link
-generic object: Individual
-code: |
-  # Will need url arguments
-  log( 'send_email_signature_link', 'console' )
-  log( url_args, 'console')
 ---
 id: x.wants_to_change_device
 generic object: Individual
 question: |
-  x.wants_to_change_device or done with signing
+  Waiting for signature or change device
+subquestion: |
+  What should be the follow-up page/feedback for signature being done?
 field: x.wants_to_change_device
 buttons:
   - Change my device: True
