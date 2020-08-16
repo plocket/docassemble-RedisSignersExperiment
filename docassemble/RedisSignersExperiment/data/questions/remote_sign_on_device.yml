@@ -3,15 +3,11 @@ comment: |
 
   `generic object` is being used to allow more flexibility for developers using this module.
   
-  Limitations:
+  ## Limitations:
   - Devices don't prevent each other from signing. TODO: Try sending action arguments with every keypress and... something and checking action arguments in every block. Not sure that's possible.
   - Right now the signer can't pick any device they want. It only differentiates between using a computer and a mobile device. A mobile device will always only present a signature. The execution order for handling multiple devices is complex unless it's broken into multiple interviews.
 ---
-# TODO: Test-run sending sms
-# TODO: Try using action arguments for all devices
-
-# This was going to be flexible enough to use in any interview
-# but I'm not sure now. Maybe an action argument would be good.
+# TODO: Try using exclusively action arguments to identify devices
 event: x.sign_on_device
 generic object: Individual
 code: |
@@ -61,36 +57,6 @@ code: |
 generic object: Individual
 code: |
   x.has_signed = False
----
-generic object: Individual
-code: |
-  # TODO: Send with action arguments
-  # action arguments are in templates
-  #if x.send_method == 'text':
-  #  x.send_sms_signature_link
-  #elif x.send_method == 'email':  # Not implemented for MVP
-  #  x.send_email_signature_link
-  x.message_result = send_sms(task='send link to other device', to=x.mobile_number, template=x.sms_device_template)
-  x.send_signature_link = True
----
-#generic object: Individual
-#template: x.sms_device_template
-#content:
-#  You have chosen to sign on this device, ${ x }. [Sign your document](${ interview_url_action('x.sign_on_device', status='normal') }).
----
-#generic object: Individual
-#code: |
-#  x.signature_url_string = interview_url(
-#    action_key = action_key,
-#    party_id = x.id,
-#    new_session = '1',
-#    i=remote_signer_url_end
-#  )
-#
-#  x.signature_url = shortenMe( x.signature_url_string ).shortenedURL
----
-#modules:
-#  - docassemble.VirtualCourtToolbox.shortenURL
 ---
 id: x.willing_to_sign
 generic object: Individual

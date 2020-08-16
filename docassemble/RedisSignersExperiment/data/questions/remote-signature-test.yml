@@ -100,16 +100,17 @@ code: |
 # For interfacing with code to send to co-signers
 ##################
 ---
+# Keep in as the default
+code: |
+  # When the saved redis data will expire
+  remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000  # 6hrs
+---
 code: |
   # Whatever info you want to be able to use for the co-signers
   custom_interview_redis_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
 ---
 code: |
-  # When the saved redis data will expire
-  remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
----
-code: |
-  # Use the name of your own remote entrypoint file
+  # DEVELOPERS: Use the name of your own remote entrypoint file
   remote_signer_url_end = user_info().package + ':remote_signer_entrypoint.yml'
 ---
 ######################
@@ -151,17 +152,16 @@ content: |
   ${ users[0] } is asking you to sign a document. Go to ${ x.cosigner_url } to sign the document.
 ---
 ######################
-# For interfacing with code to let user choose which device to sign on
+# Interfacing with code to let user choose which device to sign on
 ######################
 ---
 generic object: Individual
 code: |
   # `action` experiments for true device choice begin here
   long_device_choice_url = interview_url_action( 'signature_with_device_choice', device_id='tbd', interview_data_id=interview_data_id, party_id=x.id )
-  #parent_interview_data_id=parent_interview_data_id,
   device_choice_url = shortenMe( long_device_choice_url ).shortenedURL
 ---
-# Entrypoint for other device chosen for signature
+# Triggered by new device
 event: signature_with_device_choice
 code: |
   users[0].sign_on_device
@@ -277,6 +277,8 @@ subquestion: |
 id: document
 event: x.status
 # Problem - developer _needs_ to reconsider `get_stored_signatures`
+# Not sure this can be abstracted away
+# DEVELOPER: Must reconsider these two things
 reconsider:
   - get_stored_signatures
   - signature_doc
