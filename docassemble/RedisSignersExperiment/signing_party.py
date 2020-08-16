@@ -3,22 +3,22 @@ from docassemble.base.util import log, DARedis, Individual#, DAObject
 redis = DARedis()
   
 def amend_signer( data, key, value ):
-  if 'action_key' in data:
+  if 'interview_data_id' in data:
     party_id = data['party_id']
-    action_data = redis.get_data( data['action_key'] )
+    action_data = redis.get_data( data['interview_data_id'] )
 
     # set party key
     action_data['parties'][ party_id ][ key ] = value
-    redis.set_data( data[ 'action_key' ], action_data )
+    redis.set_data( data[ 'interview_data_id' ], action_data )
     return action_data['parties'][ party_id ]
   else:
     return None
   
 def get_signer( data ):
-  if 'action_key' in data:
+  if 'interview_data_id' in data:
     party_id = data['party_id']
-    if party_id in redis.get_data( data['action_key'] )['parties']:
-      return redis.get_data( data['action_key'] )['parties'][ party_id ]
+    if party_id in redis.get_data( data['interview_data_id'] )['parties']:
+      return redis.get_data( data['interview_data_id'] )['parties'][ party_id ]
     else:
       return False
   else:
@@ -40,11 +40,11 @@ class Signer( Individual ):
   # So the data can be changed or set later? Not sure.
   def set_data(self, data):
 
-    if data and 'action_key' in data:
+    if data and 'interview_data_id' in data:
       self.id = data['party_id']
-      if self.id in redis.get_data( data['action_key'] )['parties']:
+      if self.id in redis.get_data( data['interview_data_id'] )['parties']:
         self.exists = True
-        party = redis.get_data( data['action_key'] )['parties'][ self.id ]
+        party = redis.get_data( data['interview_data_id'] )['parties'][ self.id ]
         self.name.first = party['name']
         self.has_signed = party['has_signed']
         self.was_willing = party['willing_to_sign']

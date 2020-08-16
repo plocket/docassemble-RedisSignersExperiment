@@ -22,18 +22,18 @@ event: get_remote_signature
 code: |
   #devices[0] = devices.appendObject()
   data = None
-  if action_argument() and action_argument('action_key'):
+  if action_argument() and action_argument('interview_data_id'):
     data = {
       #'parent_interview_data_id': action_argument('parent_interview_data_id'),
-      'action_key': action_argument('action_key'),
+      'interview_data_id': action_argument('interview_data_id'),
       'party_id': action_argument('party_id')
     }
-  elif 'action_key' in url_args:
+  elif 'interview_data_id' in url_args:
     data = url_args
 
   if data:
     #parent_interview_data_id = data['parent_interview_data_id']
-    action_key = data['action_key']
+    interview_data_id = data['interview_data_id']
     party = get_signer( data )
     if party:
       signer.id = data['party_id']
@@ -83,7 +83,7 @@ content:
   You have chosen to sign on this device, ${ x }. [Sign your document](${ device_choice_url }). ${ device_choice_url }
 ---
 code: |
-  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', action_key=action_key, party_id=signer.id )
+  device_choice_url = interview_url_action( 'get_remote_signature', device_id='tbd', interview_data_id=interview_data_id, party_id=signer.id )
   #parent_interview_data_id=parent_interview_data_id,
   short_device_choice_url = shortenMe( device_choice_url ).shortenedURL
 ---
@@ -107,7 +107,7 @@ event: x.end
 question: |
   Thank you
 subquestion: |
-  You have signed ${ redis.get_data( url_args['action_key'] )['user_names'] }'s document. They will get your signature soon.
+  You have signed ${ redis.get_data( url_args['interview_data_id'] )['user_names'] }'s document. They will get your signature soon.
 ---
 # Doc is `None` when we try to use signatures
 id: signature status
@@ -117,9 +117,9 @@ prevent going back: True
 question: |
   Signature status for ${ x }
 subquestion: |
-  ${ redis.get_data( url_args['action_key'] )['user_names'] }'s document.
+  ${ redis.get_data( url_args['interview_data_id'] )['user_names'] }'s document.
   
-  ${ redis.get_data( url_args['action_key'] )[ 'signed_doc' ] }
+  ${ redis.get_data( url_args['interview_data_id'] )[ 'signed_doc' ] }
 ---
 id: signature
 generic object: Individual

@@ -1,4 +1,3 @@
----
 comment: |
   Some pre-made functionality for mutli-user signatures.
 
@@ -21,7 +20,7 @@ code: |
   multi_user = True
 ---
 code: |
-  action_key
+  interview_data_id
 
   # DEVELOPER: Assumes list of users
   if not defined('all_signers'):
@@ -40,20 +39,12 @@ code: |
     }
   action_data[ 'parties' ] = parties
   
-  redis.set_data( action_key, action_data, expire=remote_siganure_expiration_ms )
+  redis.set_data( interview_data_id, action_data, expire=remote_siganure_expiration_ms )
   set_initial_redis_data = True
----
-generic object: Individual
-code: |
-  if x.send_method == 'text': 
-    x.message_result = send_sms(task='send sms_template', to=x.mobile_number, template=x.sms_template)
-  else:
-    x.message_result = send_email(to=x, template=x.email_template)
-  x.was_notified = True
 ---
 # Updates user doc with remote signatures
 code: |
-  new_data = redis.get_data( action_key )
+  new_data = redis.get_data( interview_data_id )
   signing_parties = new_data[ 'parties' ]
   for signer in all_signers:
     if signer.id in signing_parties:
@@ -64,23 +55,36 @@ code: |
 
   get_stored_signatures = True
 ---
-generic object: Individual
-code: |
-  url_str = interview_url(
-    action_key = action_key,
-    party_id = x.id,
-    new_session = '1',
-    i=remote_signer_url_end  # The url the co-signer will go to
-  )
-  x.cosigner_url = shortenMe( url_str ).shortenedURL
----
 # Makes sure `has_signed` is always at least defined
 generic object: Individual
 code: |
   x.has_signed = False
 ---
 code: |
-  action_key = get_random_chars()
+  for remote_signer in remote_signers:
+    remote_signer.was_notified  # Send message
+  request_remote_signatures = True
+---
+generic object: Individual
+code: |
+  if x.send_method == 'text': 
+    x.message_result = send_sms(task='send sms_template', to=x.mobile_number, template=x.sms_template)
+  else:
+    x.message_result = send_email(to=x, template=x.email_template)
+  x.was_notified = True
+---
+generic object: Individual
+code: |
+  url_str = interview_url(
+    interview_data_id = interview_data_id,
+    party_id = x.id,
+    new_session = '1',
+    i=remote_signer_url_end  # The url the co-signer will go to
+  )
+  x.cosigner_url = shortenMe( url_str ).shortenedURL
+---
+code: |
+  interview_data_id = get_random_chars()
 ---
 generic object: Individual
 code: |
@@ -93,56 +97,27 @@ code: |
     return ''.join(random.choice(string.ascii_lowercase) for i in range(10))
 ---
 ###################
-#  Must be defined
+# For interfacing with code to send to co-signers
 ##################
 ---
 code: |
+  # Whatever info you want to be able to use for the co-signers
   custom_interview_redis_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
 ---
 code: |
+  # When the saved redis data will expire
   remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000
 ---
 code: |
+  # Use the name of your own remote entrypoint file
   remote_signer_url_end = user_info().package + ':remote_signer_entrypoint.yml'
 ---
-###################
-#  Pretty opinionated
-##################
+######################
+# Questions for multi-user signatures
+######################
 ---
-# After the user signs, the links for the co-signers get sent
-event: x.after_signature
-generic object: Individual
-code: |
-  if device() and device().is_pc:
-    notify_remote_signers
-    after_remote_signers_notified
-  else:
-    if wants_to_finish_on_phone:
-      notify_remote_signers
-      after_remote_signers_notified
-    else:
-      phone_end
----
-code: |
-  for remote_signer in remote_signers:
-    remote_signer.was_notified  # Send message
-  notify_remote_signers = True
----
-###################
-#  Customizable?/Should be customized
-##################
----
-id: ask wants to finish on phone
-question: |
-  Do you want to finish on your phone?
-yesno: wants_to_finish_on_phone
----
-event: phone_end
-question: |
-  Thank you
-subquestion: |
-  You can finish on your original device.
----
+# co-signer `.email` and `.mobile_number` are required
+# `.mobile_number` might better be called `.remote_number` and may change it
 id: how to send to remote signer
 generic object: Individual
 question: |
@@ -160,13 +135,6 @@ fields:
     js show if: |
       val("x.send_method") == "text"
 ---
-id: number to text
-generic object: Individual
-question: |
-  What number should we text?
-fields:
-  - no label: x.mobile_number
----
 id: sms template multiuser
 generic object: Individual
 template: x.sms_template
@@ -182,17 +150,14 @@ content: |
   Dear ${ x },
   ${ users[0] } is asking you to sign a document. Go to ${ x.cosigner_url } to sign the document.
 ---
-generic object: Individual
-template: x.sms_device_template
-content:
-  You have chosen to sign on this device, ${ x }. Sign your document at the link below
-
-  ${ device_choice_url }
+######################
+# For interfacing with code to let user choose which device to sign on
+######################
 ---
 generic object: Individual
 code: |
   # `action` experiments for true device choice begin here
-  long_device_choice_url = interview_url_action( 'signature_with_device_choice', device_id='tbd', action_key=action_key, party_id=x.id )
+  long_device_choice_url = interview_url_action( 'signature_with_device_choice', device_id='tbd', interview_data_id=interview_data_id, party_id=x.id )
   #parent_interview_data_id=parent_interview_data_id,
   device_choice_url = shortenMe( long_device_choice_url ).shortenedURL
 ---
@@ -201,11 +166,23 @@ event: signature_with_device_choice
 code: |
   users[0].sign_on_device
 ---
+######################
+# Questions for multi-user signatures
+######################
+---
+id: number to text
 generic object: Individual
 question: |
-  ${ x.instanceName }  name
+  What number do you want to text?
 fields:
-  - First: x.name.first
+  - no label: x.mobile_number
+---
+generic object: Individual
+template: x.sms_device_template
+content:
+  You have chosen to sign on this device, ${ x }. Sign your document at the link below
+
+  ${ device_choice_url }
 ---
 id: x.signature
 generic object: Individual
@@ -213,34 +190,33 @@ question: |
   ${x}'s signature
 signature: x.signature
 ---
-event: after_remote_signers_notified
+######################
+# For interfacing with code of both
+######################
+---
+# After the user signs, the links for the co-signers get sent
+event: x.after_signature
+generic object: Individual
+code: |
+  if device() and device().is_pc:
+    request_remote_signatures
+    after_remote_signatures_requested
+  else:
+    if wants_to_finish_on_phone:
+      request_remote_signatures
+      after_remote_signatures_requested
+    else:
+      phone_end
+---
+event: after_remote_signatures_requested
 code: |
   # Request other signatures under here
   # Possibly using action arguments when that's worked out
   users[0].status
 ---
-id: document
-event: x.status
-# Problem - developer _needs_ to reconsider `get_stored_signatures`
-reconsider:
-  - get_stored_signatures
-  - signature_doc
-generic object: Individual
-#prevent going back: True
-question: |
-  Test document signatures for ${ users[0] }
-subquestion: |
-  ${ signature_doc }
-  
-  ${ action_button_html('javascript:daShowSpinner();daRefreshSubmit()', label='Check again <i class="fas fa-sync-alt"></i>', size='lg') }
----
-attachment:
-  name: Signatures doc
-  variable name: signature_doc
-  filename: signatures
-  docx template file: test-signatures.docx
-  #persistent: True
-  #private: False
+######################
+# The sparks that set off the fires
+######################
 ---
 objects:
   - users: DAList.using(object_type=Individual, auto_gather=False)
@@ -248,14 +224,13 @@ objects:
 ---
 mandatory: True
 code: |
-  log( user_info().package, 'console' )
   # Save data to redis
-  # action_key (unique to this legal action), user_name, party_id
+  # interview_data_id (unique to this legal action), user_name, party_id
   # Send link generated by something. The remote interview entrypoint?
   # Start the remote entrypoint. Has a mandatory block.
   # Remote entrypoint uses remote_sign_on_device.yml to get signature. Can customize questions and data.
-  # redist.set_data( 'action_key', { parties: {}, preview: doc, }, expire=3)
-  # url_args needed: action_key, party_id, user_id
+  # redist.set_data( 'interview_data_id', { parties: {}, preview: doc, }, expire=3)
+  # url_args needed: interview_data_id, party_id, user_id
 
   users[0].name.first
   users.gathered = True
@@ -281,3 +256,43 @@ code: |
   set_initial_redis_data
   
   users[0].sign_on_device
+---
+generic object: Individual
+question: |
+  ${ x.instanceName }  name
+fields:
+  - First: x.name.first
+---
+id: ask wants to finish on phone
+question: |
+  Do you want to finish on your phone?
+yesno: wants_to_finish_on_phone
+---
+event: phone_end
+question: |
+  Thank you
+subquestion: |
+  You can finish on your original device.
+---
+id: document
+event: x.status
+# Problem - developer _needs_ to reconsider `get_stored_signatures`
+reconsider:
+  - get_stored_signatures
+  - signature_doc
+generic object: Individual
+#prevent going back: True
+question: |
+  Test document signatures for ${ users[0] }
+subquestion: |
+  ${ signature_doc }
+  
+  ${ action_button_html('javascript:daShowSpinner();daRefreshSubmit()', label='Check again <i class="fas fa-sync-alt"></i>', size='lg') }
+---
+attachment:
+  name: Signatures doc
+  variable name: signature_doc
+  filename: signatures
+  docx template file: test-signatures.docx
+  #persistent: True
+  #private: False
