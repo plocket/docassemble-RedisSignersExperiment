@@ -27,19 +27,19 @@ code: |
     all_signers = users
 
   # Have to abstract so devs can create/use their own docs and text effectively?
-  # DEVELOPERS: Create `action_data` elsewhere, as shown below
-  action_data = {}
+  # DEVELOPERS: Create `interview_data` elsewhere, as shown below
+  interview_data = {}
   if defined('custom_interview_redis_data'):
-    action_data = custom_interview_redis_data
+    interview_data = custom_interview_redis_data
   
   parties = {}
   for signer in all_signers:
     parties[ signer.id ] = {
       "has_signed": False, "willing_to_sign": None, "name": str( signer )
     }
-  action_data[ 'parties' ] = parties
+  interview_data[ 'parties' ] = parties
   
-  redis.set_data( interview_data_id, action_data, expire=remote_siganure_expiration_ms )
+  redis.set_data( interview_data_id, interview_data, expire=remote_siganure_expiration_ms )
   set_initial_redis_data = True
 ---
 # Updates user doc with remote signatures
@@ -62,7 +62,7 @@ code: |
 ---
 code: |
   for remote_signer in remote_signers:
-    remote_signer.was_notified  # Send message
+    remote_signer.signature_url_was_sent  # Send message
   request_remote_signatures = True
 ---
 generic object: Individual
@@ -71,7 +71,7 @@ code: |
     x.message_result = send_sms(task='send sms_template', to=x.mobile_number, template=x.sms_template)
   else:
     x.message_result = send_email(to=x, template=x.email_template)
-  x.was_notified = True
+  x.signature_url_was_sent = True
 ---
 generic object: Individual
 code: |
@@ -81,6 +81,7 @@ code: |
     new_session = '1',
     i=remote_signer_url_end  # The url the co-signer will go to
   )
+
   x.cosigner_url = shortenMe( url_str ).shortenedURL
 ---
 code: |
@@ -105,13 +106,14 @@ code: |
   # When the saved redis data will expire
   remote_siganure_expiration_ms = 1* 6 * 60 * 60 * 1000  # 6hrs
 ---
-code: |
-  # Whatever info you want to be able to use for the co-signers
-  custom_interview_redis_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
----
+# Keep in as the default
 code: |
   # DEVELOPERS: Use the name of your own remote entrypoint file
   remote_signer_url_end = user_info().package + ':remote_signer_entrypoint.yml'
+---
+code: |
+  # Whatever info you want to be able to use for the co-signers' interview
+  custom_interview_redis_data = { 'user_names': str(users), 'signed_doc': signature_doc, }  #'no doc given' } # signature_doc, } #'preview': signature_doc }
 ---
 ######################
 # Questions for multi-user signatures
@@ -163,7 +165,7 @@ code: |
   #  x.send_sms_signature_link
   #elif x.send_method == 'email':  # Not implemented for MVP
   #  x.send_email_signature_link
-  x.message_result = send_sms(task='send link to other device', to=x.mobile_number, template=x.sms_device_template)
+  x.message_result = send_sms(task='send link to other device', to=x.device_number, template=x.sms_device_template)
   x.send_signature_link = True  # Used by sign_on_device.yml
 ---
 generic object: Individual
@@ -186,7 +188,8 @@ generic object: Individual
 question: |
   What number do you want to text?
 fields:
-  - no label: x.mobile_number
+  - no label: x.device_number
+    default: ${ showifdef( x.instanceName + '.mobile_number' )}
 ---
 generic object: Individual
 template: x.sms_device_template

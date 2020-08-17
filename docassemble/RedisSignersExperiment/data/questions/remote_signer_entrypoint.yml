@@ -119,7 +119,7 @@ code: |
   #  x.send_sms_signature_link
   #elif x.send_method == 'email':  # Not implemented for MVP
   #  x.send_email_signature_link
-  x.message_result = send_sms(task='send link to other device', to=x.mobile_number, template=x.sms_device_template)
+  x.message_result = send_sms(task='send link to other device', to=x.device_number, template=x.sms_device_template)
   x.send_signature_link = True  # Used by sign_on_device.yml
 ---
 id: willing to sign
