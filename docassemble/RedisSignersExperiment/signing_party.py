@@ -48,7 +48,7 @@ def store_signer_attribute( signature_data_id, party_id, key, value ):
   
   
 # Should this set defaults as well if the party data exists, but its attributes aren't defined? It may mean the originating interview wouldn't have to handle it, but it would hide functionality.
-# Could also loop through the data and give all dict values to the signer.
+# Could also loop through the data and give all dict values to the signer. How unsafe would that be?
 def set_signer_attributes( signer, signature_data_id, party_id ):
   """If data is vaild, sets attributes of an object based on the data in a dictionary in the store (currently using Redis.)
   

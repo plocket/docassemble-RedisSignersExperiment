@@ -185,9 +185,9 @@ code: |
 ---
 generic object: Individual
 question: |
-  ${ x.instanceName }  name
+  Multiuser Demo: ${ x.instanceName }  name
 fields:
-  - First: x.name.first
+  - First name: x.name.first
 ---
 id: signature date
 question: |
