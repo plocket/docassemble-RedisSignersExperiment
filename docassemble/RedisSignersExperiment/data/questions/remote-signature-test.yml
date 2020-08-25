@@ -182,6 +182,7 @@ question: |
 fields:
   - no label: signature_date
     datatype: date
+    min: ${ today() }
 ---
 # It's weird to ask this if they didn't start on another device and there's no provision for that right now. Could set a flag at the very start if we really want that.
 #id: ask wants to finish on phone

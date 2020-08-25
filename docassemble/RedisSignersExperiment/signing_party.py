@@ -118,6 +118,7 @@ def store_willing_to_sign( signer, value ):
   return store_signer_attribute( signer.signature_data_id, signer.id, 'willing_to_sign', value )
 
 
+# TODO: Add ability to send in custom data if desired. Use case - originating user defines own signature date.
 def store_signature_data( signer ):
   """Try to update signature values in the data store.
   
