@@ -122,20 +122,7 @@ signature: x.signature
 event: x.after_signature
 generic object: Individual
 code: |
-  if device() and device().is_pc:
-    request_remote_signatures
-    after_remote_signatures_requested
-  else:
-    if wants_to_finish_on_phone:
-      request_remote_signatures
-      after_remote_signatures_requested
-    else:
-      phone_end
----
-event: after_remote_signatures_requested
-code: |
-  # Request other signatures under here
-  # Possibly using action arguments when that's worked out
+  request_remote_signatures
   users[0].status
 ---
 ######################
@@ -196,10 +183,11 @@ fields:
   - no label: signature_date
     datatype: date
 ---
-id: ask wants to finish on phone
-question: |
-  Do you want to finish on your phone?
-yesno: wants_to_finish_on_phone
+# It's weird to ask this if they didn't start on another device and there's no provision for that right now. Could set a flag at the very start if we really want that.
+#id: ask wants to finish on phone
+#question: |
+#  Do you want to finish on your phone?
+#yesno: wants_to_finish_on_phone
 ---
 event: phone_end
 question: |

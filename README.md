@@ -1,6 +1,6 @@
 Trying out Redis as a way to get remote signatures more easily. It's an alternative to using action arguments, `force_ask`, and such.
 
-Tests I’ve thought of so far:
+These tests are a bit outdated, but they can be the foundation of more extensive tests:
 
 1:
 1. User signs on computer
