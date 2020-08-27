@@ -1,7 +1,7 @@
 {
-  "name": "docassemble-mavirtualcourt",
+  "name": "docassemble-redissignersexperiment",
   "version": "1.0.0",
-  "description": "Quinten Steenhuis\r Caroline Robinson\r Kate Barry\r Plocket\r Lily Yang\r Matthew Brooks\r Lance Godard\r Maeve MacGlinchey\r Kendall Garner\r David Colarusso",
+  "description": "Foundation for docassemble multi-user multi-device module",
   "main": "",
   "directories": {
     "test": "tests"
@@ -15,14 +15,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SuffolkLITLab/docassemble-MAVirtualCourt.git"
+    "url": "git+https://github.com/plocket/docassemble-RedisSignersExperiment.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/SuffolkLITLab/docassemble-MAVirtualCourt/issues"
+    "url": "https://github.com/plocket/docassemble-RedisSignersExperiment/issues"
   },
-  "homepage": "https://github.com/SuffolkLITLab/docassemble-MAVirtualCourt#readme",
+  "homepage": "https://github.com/plocket/docassemble-RedisSignersExperiment#readme",
   "dependencies": {
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",

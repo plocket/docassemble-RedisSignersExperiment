@@ -12,11 +12,12 @@ const initPuppeteer = async () => {
   const browser = await puppeteer.launch({headless: !process.env.DEBUG});
   const page = await browser.newPage();
   page.setDefaultTimeout(120 * 1000)
-  
+
   return {'page': page, 'browser': browser};
 }
 
 const login = async () => {
+  console.log( 'repo url: ', process.env.REPO_URL );
   const {page, browser} = await initPuppeteer();
   // Login
   await page.goto(`${BASE_URL}/user/sign-in?`);
